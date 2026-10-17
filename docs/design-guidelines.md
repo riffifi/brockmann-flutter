@@ -7,7 +7,7 @@ Brockmann combines typographic hierarchy, open space, and direct manipulation. A
 - Use Geist Sans for language, Mono with tabular figures for changing values, and Pixel cuts for short expressive text. Never compress a label into the same space as a large readout.
 - Keep long text flexible. Test at 320 dp width and 200% text size. Break button groups into wraps; keep destination labels reachable by scrolling rather than removing them.
 - Give a selected item both a visual marker and selected semantics. Use inset markers and internal padding so a border never touches glyphs. Derive readable accent text separately from the raw accent fill.
-- Put the mobile colour picker in a touch grid by default. The ribbon preserves the reference’s inset bright squares on a continuous tinted band, thin neutral frame and hollow paired markers. Fit the full horizontal palette and allow scrubbing; use the grid for separate large touch targets.
+- Put the mobile colour picker in a touch grid by default. The ribbon preserves the reference’s large square samples on a continuous tinted band, thin neutral frame and hollow paired markers. Keep the ribbon’s 48 dp columns and 40 dp squares at their authored size; scroll overflow instead of shrinking the entire palette. Bright squares fill the band height. Reserve vertical space only for the markers and optional companion row.
 
 The title switcher uses the full available width with 12 dp of space at the beginning and end of the strip. Keep the page content at its normal inset. Swiping titles selects one adjacent screen on release; let selection reveal the title rather than allowing free panning. Compact tabs remain scrollable.
 

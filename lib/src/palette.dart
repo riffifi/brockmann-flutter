@@ -214,7 +214,13 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
                   ? math.max(1, (b.maxWidth / 56).floor())
                   : widget.schemes.length;
               final ribbon = widget.variant == BrockmannPaletteVariant.ribbon;
-              final crossExtent = ribbon && vertical ? 176.0 : 88.0;
+              final crossExtent = ribbon
+                  ? (vertical
+                        ? 176.0
+                        : widget.companionCount == 0
+                        ? 72.0
+                        : 88.0)
+                  : 88.0;
               final size = grid
                   ? Size(
                       columns * 56,
@@ -225,10 +231,7 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
                       math.min(b.maxWidth, ribbon ? 288 : 144),
                       widget.schemes.length * _step,
                     )
-                  : Size(
-                      ribbon ? b.maxWidth : widget.schemes.length * _step,
-                      crossExtent,
-                    );
+                  : Size(widget.schemes.length * _step, crossExtent);
               final visual = BrockmannMotion(
                 value: _selected.toDouble(),
                 milliseconds: 180,
@@ -262,41 +265,6 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
                                 _cell(i, Size(size.width, _step)),
                             ],
                           )
-                        : ribbon
-                        ? GestureDetector(
-                            key: const ValueKey('brockmann-colour-ribbon'),
-                            behavior: HitTestBehavior.opaque,
-                            onTapDown: widget.onChanged == null
-                                ? null
-                                : (d) => _choose(
-                                    (d.localPosition.dx /
-                                            size.width *
-                                            widget.schemes.length)
-                                        .floor()
-                                        .clamp(0, widget.schemes.length - 1),
-                                  ),
-                            onHorizontalDragUpdate: widget.onChanged == null
-                                ? null
-                                : (d) => _choose(
-                                    (d.localPosition.dx /
-                                            size.width *
-                                            widget.schemes.length)
-                                        .floor()
-                                        .clamp(0, widget.schemes.length - 1),
-                                  ),
-                            child: Row(
-                              children: [
-                                for (var i = 0; i < widget.schemes.length; i++)
-                                  _cell(
-                                    i,
-                                    Size(
-                                      size.width / widget.schemes.length,
-                                      crossExtent,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          )
                         : Row(
                             children: [
                               for (var i = 0; i < widget.schemes.length; i++)
@@ -306,12 +274,14 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
                   ),
                 ),
               );
-              if (ribbon && !vertical) return visual;
               return grid
                   ? Align(alignment: Alignment.centerLeft, child: visual)
                   : SizedBox(
                       height: vertical ? widget.verticalExtent : crossExtent,
                       child: SingleChildScrollView(
+                        key: ribbon
+                            ? const ValueKey('brockmann-colour-ribbon')
+                            : null,
                         controller: _scroll,
                         scrollDirection: widget.axis,
                         child: visual,
@@ -359,7 +329,8 @@ class _PalettePainter extends CustomPainter {
     final step = ribbon
         ? (vertical ? 24.0 : size.width / math.max(1, schemes.length))
         : 56.0;
-    final band = ribbon && !vertical ? (step * 1.35).clamp(16.0, 40.0) : 20.0;
+    final band = ribbon && !vertical ? 40.0 : 20.0;
+    final bandTop = companions == 0 ? 16.0 : 32.0;
     Rect cell(int i) => grid
         ? Rect.fromLTWH((i % columns) * 56, (i ~/ columns) * 72, 56, 72)
         : vertical
@@ -370,7 +341,7 @@ class _PalettePainter extends CustomPainter {
       final main = ribbon
           ? (vertical
                 ? Rect.fromLTWH(24, r.top, 20, step)
-                : Rect.fromLTWH(r.left, 32, step, band))
+                : Rect.fromLTWH(r.left, bandTop, step, band))
           : (vertical
                 ? Rect.fromLTWH(12, r.top + 12, 32, 32)
                 : Rect.fromLTWH(r.left + 12, r.top + 28, 32, 32));
@@ -385,8 +356,8 @@ class _PalettePainter extends CustomPainter {
         c.drawRect(
           Rect.fromCenter(
             center: main.center,
-            width: vertical ? 8 : step * .6,
-            height: vertical ? 8 : step * .6,
+            width: vertical ? 16 : 40,
+            height: vertical ? 16 : 40,
           ),
           Paint()..color = muted(s.primary),
         );
@@ -426,7 +397,7 @@ class _PalettePainter extends CustomPainter {
       c.drawRect(
         vertical
             ? Rect.fromLTWH(22, 0, 24, size.height)
-            : Rect.fromLTWH(.5, 30, size.width - 1, band + 4),
+            : Rect.fromLTWH(.5, bandTop - 1, size.width - 1, band + 2),
         Paint()
           ..color = theme.lineStrong
           ..style = PaintingStyle.stroke
@@ -446,16 +417,16 @@ class _PalettePainter extends CustomPainter {
           ..lineTo(x, r.center.dy)
           ..close();
       } else {
-        final y = companions == 0 ? 16.0 : 4.0;
+        const y = 0.0;
         top
           ..moveTo(r.center.dx - 4, y)
           ..lineTo(r.center.dx + 4, y)
           ..lineTo(r.center.dx, y + 7)
           ..close();
         bottom
-          ..moveTo(r.center.dx - 4, 32 + band + 15)
-          ..lineTo(r.center.dx + 4, 32 + band + 15)
-          ..lineTo(r.center.dx, 32 + band + 8)
+          ..moveTo(r.center.dx - 4, bandTop + band + 15)
+          ..lineTo(r.center.dx + 4, bandTop + band + 15)
+          ..lineTo(r.center.dx, bandTop + band + 8)
           ..close();
       }
       c.drawPath(top, stroke);

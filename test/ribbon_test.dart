@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'Ribbon fits the complete palette and supports precise scrubbing',
+    'Ribbon retains large square samples and scrolls without shrinking',
     (tester) async {
       var selected = 0;
       await tester.pumpWidget(
@@ -27,17 +27,21 @@ void main() {
       );
       await tester.pumpAndSettle();
       final strip = find.byKey(const ValueKey('brockmann-colour-ribbon'));
-      expect(tester.getSize(strip), const Size(320, 88));
+      expect(tester.getSize(strip), const Size(320, 72));
       final origin = tester.getTopLeft(strip);
-      await tester.tapAt(origin + const Offset(15, 42));
+      await tester.tapAt(origin + const Offset(72, 36));
       await tester.pumpAndSettle();
       expect(selected, 1);
       await tester.dragFrom(
-        origin + const Offset(15, 42),
-        const Offset(290, 0),
+        origin + const Offset(72, 36),
+        const Offset(-290, 0),
       );
       await tester.pumpAndSettle();
-      expect(selected, 30);
+      final scroll = tester.state<ScrollableState>(
+        find.descendant(of: strip, matching: find.byType(Scrollable)),
+      );
+      expect(scroll.position.pixels, greaterThan(0));
+      expect(selected, 1);
       expect(tester.takeException(), isNull);
     },
   );

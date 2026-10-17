@@ -15,3 +15,4 @@
 - Mobile colour ribbon doubled in scale with 48 dp targets; showcase screen switcher spans the available screen width.
 - Ribbon samples fill the band as squares; title pivots have end spacing and neighbour-selection swipes, while page drags track the finger directly.
 - Restore reference ribbon composition with a fitted full palette and scrub input; finger-controlled turnstile progress retains staggered page entry.
+- Keep ribbon columns large while scrolling overflow; square samples fill the band height and its container reserves only marker/companion space.
