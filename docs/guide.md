@@ -75,8 +75,16 @@ Use `BrockmannFeedbackController` for independent audio and touch preferences. E
 
 ## Additional controls and Android behavior
 
-See [components](components.md) for selection controls, range input, search, bottom navigation, calendar/time dialogs, context menus and action sheets. Every component stores application state in its owner; disabled callbacks remain null. Material-backed range, date and time controls retain Flutter’s accessibility and keyboard behavior with Brockmann colours and flat shapes.
+See [components](components.md) for selection controls, range input, search, bottom navigation, calendar/time dialogs, context menus and action sheets. Every component stores application state in its owner; disabled callbacks remain null. Range input uses Flutter’s touch mechanics with square handles. Date and time helpers use the custom `BrockmannCalendar` and `BrockmannTimePicker`, with written navigation and confirmation actions.
 
 `BrockmannScrollBehavior` uses directional stretch feedback at scroll boundaries for vertical and horizontal viewports. It follows the scroll direction, including reversed lists. `BrockmannApp` installs Android predictive-back transitions, and full-page dropdowns are real page routes. Keep `android:enableOnBackInvokedCallback="true"` in the host application. Use `PopScope(canPop: ...)` when an application needs to protect unsaved work; do not introduce `WillPopScope`.
 
 The showcase has adaptive foreground/background launcher layers and a monochrome layer for Android’s themed icons. A host app supplies its own identity assets and launcher preference.
+
+## Gesture ownership and typography
+
+Colour planes, dials, sliders and range handles own pointers that start inside their direct-input surface. Page swipes are rejected for those pointers rather than competing after a drag begins. The time wheels follow the same rule. Wrap custom direct-input widgets in `BrockmannInteractionRegion` to get the same behavior.
+
+Handle pickup has one native haptic after a 160 ms hold or initial drag, provided a feedback controller is installed and haptics are allowed. There are no repeated drag ticks or sounds.
+
+Search presents the query and a written clear action. Sheets and context menus are text-only by default; optional icon metadata remains available but is not rendered automatically. Chips offer a written remove action; the application removes the item from state. The showcase’s Inputs page uses typographic hierarchy and no bottom icon navbar.

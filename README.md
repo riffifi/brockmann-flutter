@@ -1,6 +1,6 @@
 # Brockmann for Flutter
 
-An Android-first, touch-first UI library inspired by Swiss typography and Metro. Flat surfaces, square edges, Geist typography, one accent colour, and motion that explains a change. Includes a separate eleven-page Android showcase.
+An Android-first, touch-first UI library inspired by Swiss typography and Metro. Typography-led actions, flat surfaces, square edges, Geist fonts, one accent colour, and motion that explains a change. Includes a separate eleven-page Android showcase.
 
 ## Run the showcase
 
@@ -67,9 +67,9 @@ Controls are controlled widgets: store their values in your app, and update them
 | Overlays | `showBrockmannDialog`, `showBrockmannMenu`, `showBrockmannCommands`, `showBrockmannToast` |
 | Selection | `BrockmannCheckbox`, `BrockmannRadioGroup`, `BrockmannSegmentedControl`, `BrockmannChip` |
 | Composition | `BrockmannAccordion`, `BrockmannBadge`, `BrockmannBanner`, `BrockmannEmptyState` |
-| Pickers and menus | `showBrockmannDatePicker`, `showBrockmannTimePicker`, `BrockmannContextMenu`, `showBrockmannContextMenu`, `showBrockmannActionSheet` |
+| Pickers and menus | `BrockmannCalendar`, `BrockmannTimePicker`, `showBrockmannDatePicker`, `showBrockmannTimePicker`, `BrockmannContextMenu`, `showBrockmannContextMenu`, `showBrockmannActionSheet` |
 | Reordering | `BrockmannReorderableList` |
-| Foundation | `BrockmannPressable`, `BrockmannIconButton`, `BrockmannGlyph` |
+| Foundation | `BrockmannPressable`, `BrockmannInteractionRegion`, optional `BrockmannIconButton` / `BrockmannGlyph` |
 | Optional feedback | `BrockmannFeedbackController`, `BrockmannSoundController`, `BrockmannFeedbackScope`, `AndroidSoundBackend` |
 
 See [the component guide](docs/components.md), [the Rust parity audit](docs/rust-parity.md), [the usage guide](docs/guide.md), [design guidelines](docs/design-guidelines.md), and [sound research and Android implementation](docs/sound-research.md), and [haptic rhythms](docs/haptics.md). The showcase in [example/lib/main.dart](example/lib/main.dart) is a complete integration example.

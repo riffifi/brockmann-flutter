@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 import 'foundation.dart';
+import 'pickers.dart';
 import 'controls.dart';
 import 'feedback.dart';
 
@@ -234,6 +235,7 @@ Future<T?> showBrockmannContextMenu<T>(
   BuildContext context, {
   required Offset position,
   required List<BrockmannMenuEntry<T>> entries,
+  bool showIcons = false,
 }) {
   final t = context.brockmann;
   final overlay =
@@ -259,7 +261,7 @@ Future<T?> showBrockmannContextMenu<T>(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (entry.icon != null) ...[
+              if (showIcons && entry.icon != null) ...[
                 BrockmannGlyph(
                   entry.icon!,
                   color: entry.destructive ? t.danger : t.secondary,
@@ -316,6 +318,7 @@ Future<T?> showBrockmannActionSheet<T>(
   BuildContext context, {
   required String title,
   required List<BrockmannMenuEntry<T>> entries,
+  bool showIcons = false,
 }) {
   final t = context.brockmann;
   return showModalBottomSheet<T>(
@@ -347,7 +350,7 @@ Future<T?> showBrockmannActionSheet<T>(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
                       children: [
-                        if (entry.icon != null) ...[
+                        if (showIcons && entry.icon != null) ...[
                           BrockmannGlyph(
                             entry.icon!,
                             color: entry.destructive ? t.danger : t.secondary,
@@ -381,35 +384,104 @@ Future<DateTime?> showBrockmannDatePicker(
   required DateTime initialDate,
   required DateTime firstDate,
   required DateTime lastDate,
-}) => showDatePicker(
-  context: context,
-  initialDate: initialDate,
-  firstDate: firstDate,
-  lastDate: lastDate,
-  builder: (c, child) => Theme(
-    data: Theme.of(c).copyWith(
-      datePickerTheme: DatePickerThemeData(
-        backgroundColor: c.brockmann.surface,
-        surfaceTintColor: Colors.transparent,
-        shape: const RoundedRectangleBorder(),
-      ),
+}) {
+  final first = DateUtils.dateOnly(firstDate),
+      last = DateUtils.dateOnly(lastDate);
+  var draft = DateUtils.dateOnly(initialDate);
+  assert(
+    !last.isBefore(first) && !draft.isBefore(first) && !draft.isAfter(last),
+  );
+  return _showTypedPicker<DateTime>(
+    context,
+    'choose date',
+    (c, set) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        BrockmannText('choose date', role: BrockmannType.heading),
+        const SizedBox(height: 16),
+        BrockmannCalendar(
+          value: draft,
+          firstDate: first,
+          lastDate: last,
+          onChanged: (v) => set(() => draft = v),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            BrockmannButton(
+              label: 'use date',
+              style: BrockmannButtonStyle.secondary,
+              onPressed: () => Navigator.pop(c, draft),
+            ),
+            BrockmannButton(
+              label: 'cancel',
+              style: BrockmannButtonStyle.text,
+              onPressed: () => Navigator.pop(c),
+            ),
+          ],
+        ),
+      ],
     ),
-    child: child!,
-  ),
-);
+  );
+}
+
 Future<TimeOfDay?> showBrockmannTimePicker(
   BuildContext context, {
   required TimeOfDay initialTime,
-}) => showTimePicker(
-  context: context,
-  initialTime: initialTime,
-  builder: (c, child) => Theme(
-    data: Theme.of(c).copyWith(
-      timePickerTheme: TimePickerThemeData(
-        backgroundColor: c.brockmann.surface,
-        shape: const RoundedRectangleBorder(),
-      ),
+}) {
+  var draft = initialTime;
+  return _showTypedPicker<TimeOfDay>(
+    context,
+    'choose time',
+    (c, set) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        BrockmannText('choose time', role: BrockmannType.heading),
+        const SizedBox(height: 16),
+        BrockmannTimePicker(
+          value: draft,
+          onChanged: (v) => set(() => draft = v),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            BrockmannButton(
+              label: 'use time',
+              style: BrockmannButtonStyle.secondary,
+              onPressed: () => Navigator.pop(c, draft),
+            ),
+            BrockmannButton(
+              label: 'cancel',
+              style: BrockmannButtonStyle.text,
+              onPressed: () => Navigator.pop(c),
+            ),
+          ],
+        ),
+      ],
     ),
-    child: child!,
+  );
+}
+
+Future<T?> _showTypedPicker<T>(
+  BuildContext context,
+  String title,
+  Widget Function(BuildContext, StateSetter) content,
+) => showGeneralDialog<T>(
+  context: context,
+  barrierDismissible: true,
+  barrierLabel: 'Close $title',
+  barrierColor: Colors.black.withValues(
+    alpha: context.brockmann.light ? .4 : .6,
   ),
+  transitionDuration: context.brockmann.duration(context, 220),
+  pageBuilder: (c, _, _) =>
+      StatefulBuilder(builder: (c, set) => _FlatDialog(child: content(c, set))),
+  transitionBuilder: (c, a, _, child) =>
+      FadeTransition(opacity: a, child: child),
 );

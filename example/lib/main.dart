@@ -141,7 +141,7 @@ class _CatalogueState extends State<Catalogue> {
   final schemes = brockmannPalette();
   Color customColour = const Color(0xff39a6a0);
   bool? checked = true;
-  bool expanded = false;
+  bool expanded = false, tagVisible = true;
   String segment = 'week', quality = 'balanced';
   RangeValues range = const RangeValues(.2, .75);
   double quantity = 4;
@@ -149,22 +149,9 @@ class _CatalogueState extends State<Catalogue> {
   TimeOfDay time = const TimeOfDay(hour: 9, minute: 30);
   final search = TextEditingController();
   final sessionActions = const [
-    BrockmannMenuEntry(
-      value: 'rename',
-      label: 'Rename',
-      icon: BrockmannIcon.pencil,
-    ),
-    BrockmannMenuEntry(
-      value: 'duplicate',
-      label: 'Duplicate',
-      icon: BrockmannIcon.copy,
-    ),
-    BrockmannMenuEntry(
-      value: 'delete',
-      label: 'Delete',
-      icon: BrockmannIcon.trash,
-      destructive: true,
-    ),
+    BrockmannMenuEntry(value: 'rename', label: 'Rename'),
+    BrockmannMenuEntry(value: 'duplicate', label: 'Duplicate'),
+    BrockmannMenuEntry(value: 'delete', label: 'Delete', destructive: true),
   ];
   final projectName = TextEditingController(text: 'untitled session');
   final notes = TextEditingController(
@@ -641,10 +628,11 @@ class _CatalogueState extends State<Catalogue> {
             selected: checked == true,
             onPressed: () => setState(() => checked = checked != true),
           ),
-          BrockmannChip(
-            label: 'removable',
-            onDeleted: () => showBrockmannToast(context, 'Tag removed'),
-          ),
+          if (tagVisible)
+            BrockmannChip(
+              label: 'removable',
+              onDeleted: () => setState(() => tagVisible = false),
+            ),
           const BrockmannBadge(label: 'local'),
         ],
       ),
@@ -659,21 +647,10 @@ class _CatalogueState extends State<Catalogue> {
       BrockmannBanner(
         title: 'Project saved',
         message: 'All changes are stored on this device.',
-        icon: BrockmannIcon.check,
       ),
       const BrockmannEmptyState(
         title: 'Nothing queued',
         message: 'Add an instrument to start building.',
-        icon: BrockmannIcon.folder,
-      ),
-      BrockmannNavigationBar(
-        destinations: const [
-          BrockmannDestination('studio', BrockmannIcon.settings),
-          BrockmannDestination('library', BrockmannIcon.folder),
-          BrockmannDestination('account', BrockmannIcon.user),
-        ],
-        selected: choice.clamp(0, 2),
-        onChanged: (v) => setState(() => choice = v),
       ),
     ]),
     9 => section('choose without friction', [

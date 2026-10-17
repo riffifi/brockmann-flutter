@@ -4,6 +4,7 @@ Brockmann combines typographic hierarchy, open space, and direct manipulation. A
 
 - Use black or white surfaces, one primary accent, square edges, and hairline divisions. Avoid shadows, rounded cards, gloss, ripples, and decoration that competes with content.
 - Use the desktop’s 4 dp base rhythm, grouping content in multiples of 8 or 16 dp. Start phone content at 24 dp from the edge, wider layouts at 48 dp. Use at least 48 dp hit areas even where the painted glyph is smaller.
+- Typography is the primary design feature. Name actions in words. Keep sheets, context menus and search text-led; do not decorate every action with an icon. Simple arrows and carets are allowed for navigation and disclosure. Phosphor is available for deliberate visual tools and content, not the default core action language.
 - Use Geist Sans for language, Mono with tabular figures for changing values, and Pixel cuts for short expressive text. Never compress a label into the same space as a large readout.
 - Keep long text flexible. Test at 320 dp width and 200% text size. Break button groups into wraps; keep destination labels reachable by scrolling rather than removing them.
 - Give a selected item both a visual marker and selected semantics. Use inset markers and internal padding so a border never touches glyphs. Derive readable accent text separately from the raw accent fill.
@@ -13,7 +14,7 @@ The title switcher uses the full available width with 12 dp of space at the begi
 
 ## Motion
 
-Motion communicates causality and position. A switch wipes in and out symmetrically over 180 ms. Palette selection and programmatic colour-field markers animate over 180 ms; direct manipulation has no easing lag. Dropdown panels reveal over 220 ms, with phone rows staggered by 30 ms, and close over 200 ms; a modal fade lasts 160 ms. Page drags scrub the turnstile angle and fade without easing lag. Release completes the remaining turn and retains incoming feather motion; cancellation returns the same gesture progress to rest. Continuous drag position follows the finger without spring lag; Flutter animates reorder neighbours.
+Motion communicates causality and position. A switch wipes in and out symmetrically over 180 ms. Palette selection and programmatic colour-field markers animate over 180 ms; direct manipulation has no easing lag. Dropdown panels reveal over 220 ms, with phone rows staggered by 30 ms, and close over 200 ms; a modal fade lasts 160 ms. Page drags scrub the turnstile angle and fade without easing lag. Release completes the remaining turn and retains incoming feather motion; cancellation returns the same gesture progress to rest. Direct-input regions reject ancestor page swipes for pointers starting inside them, and use a small local drag threshold. Continuous drag position follows the finger without spring lag; Flutter animates reorder neighbours.
 
 Press feedback is brief (60 ms down, 160 ms release). Do not hold an action pending a visual transition. Retarget an animation from its current state when input reverses. Respect the system's Disable animations setting as well as the application's own reduce-motion choice. Reduced mode removes spatial navigation movement and uses a short live-tile crossfade and stops indeterminate travel.
 
@@ -29,4 +30,4 @@ Keep safe areas, Android Back cancellation, native IME/clipboard, screen-reader 
 
 ## Haptic rhythms
 
-A deliberate physical gesture can have one tactile response. Essential mode covers committed switches, reorder pickup/landing and explicit outcomes. Use a brief double tick for confirmation and three spaced ticks for rejection. Subtle mode can add selections and opening/closing. Never repeat pulses throughout a continuous gesture. Sound and haptics have independent preferences; honor Android's system touch-feedback choice. Do not let a rhythm substitute for readable outcome text. Details and API: [haptics](haptics.md).
+A deliberate physical gesture can have one tactile response. Essential mode covers committed switches, reorder pickup/landing and explicit outcomes. Slider and range handles get one pickup response after a 160 ms hold or initial drag; never repeat that impact during a gesture. Use a brief double tick for confirmation and three spaced ticks for rejection. Subtle mode can add selections and opening/closing. Never repeat pulses throughout a continuous gesture. Sound and haptics have independent preferences; honor Android's system touch-feedback choice. Do not let a rhythm substitute for readable outcome text. Details and API: [haptics](haptics.md).

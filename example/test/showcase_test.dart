@@ -49,4 +49,19 @@ void main() {
     expect(find.text('a new session'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('Inputs keeps typography primary and actually removes tags', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const Showcase());
+    tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(8);
+    await tester.pumpAndSettle();
+    expect(find.byType(BrockmannNavigationBar), findsNothing);
+    final tag = find.byWidgetPredicate(
+      (w) => w is BrockmannChip && w.label == 'removable',
+    );
+    await tester.ensureVisible(tag);
+    await tester.tap(find.descendant(of: tag, matching: find.text('remove')));
+    await tester.pumpAndSettle();
+    expect(tag, findsNothing);
+  });
 }

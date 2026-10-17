@@ -37,8 +37,33 @@ void main() {
       final plane = find.byKey(const ValueKey('brockmann-colour-plane'));
       await tester.ensureVisible(plane);
       final oldColour = tester.widget<BrockmannColorField>(field).value;
-      await tester.tapAt(tester.getRect(plane).center);
+      final planeTouch = await tester.startGesture(
+        tester.getRect(plane).center,
+      );
+      await planeTouch.moveBy(const Offset(110, 25));
+      await tester.pump();
+      await planeTouch.up();
       await tester.pumpAndSettle();
+      expect(
+        tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).selected,
+        0,
+      );
+      final hue = find
+          .descendant(
+            of: find.byType(BrockmannColorField),
+            matching: find.byType(BrockmannSlider),
+          )
+          .first;
+      await tester.ensureVisible(hue);
+      final hueTrack = find
+          .descendant(of: hue, matching: find.byType(CustomPaint))
+          .first;
+      await tester.drag(hueTrack, const Offset(-110, 0));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).selected,
+        0,
+      );
       expect(tester.widget<BrockmannColorField>(field).value, isNot(oldColour));
       tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(1);
       await tester.pumpAndSettle();
@@ -55,6 +80,10 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
       expect(tester.widget<BrockmannKnob>(dial).value, greaterThan(dialBefore));
+      expect(
+        tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).selected,
+        1,
+      );
       tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(9);
       await tester.pumpAndSettle();
       final anchored = find.byType(BrockmannPicker).last;
@@ -74,6 +103,33 @@ void main() {
             .selected,
         3,
       );
+      final dateButton = find.byWidgetPredicate(
+        (w) => w is BrockmannButton && w.label.startsWith('date /'),
+      );
+      await tester.ensureVisible(dateButton);
+      await tester.tap(dateButton);
+      await tester.pumpAndSettle();
+      final day = find.byKey(const ValueKey('brockmann-date-2026-10-19'));
+      await tester.ensureVisible(day);
+      await tester.tap(day);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('use date'));
+      await tester.tap(find.text('use date'));
+      await tester.pumpAndSettle();
+      expect(find.text('date / 2026-10-19'), findsOneWidget);
+      final timeButton = find.byWidgetPredicate(
+        (w) => w is BrockmannButton && w.label.startsWith('time /'),
+      );
+      await tester.ensureVisible(timeButton);
+      await tester.tap(timeButton);
+      await tester.pumpAndSettle();
+      final minute = find.byKey(const ValueKey('brockmann-time-minute'));
+      await tester.ensureVisible(minute);
+      await tester.drag(minute, const Offset(0, -80));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('use time'));
+      await tester.tap(find.text('use time'));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final backend = AndroidSoundBackend();
       expect(await backend.prepare(), isTrue);

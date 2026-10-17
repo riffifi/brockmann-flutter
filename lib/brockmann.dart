@@ -12,3 +12,5 @@ export 'src/reorder.dart';
 export 'src/feedback.dart';
 export 'src/motion.dart';
 export 'src/inputs.dart';
+export 'src/interaction.dart' show BrockmannInteractionRegion;
+export 'src/pickers.dart';

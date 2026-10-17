@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
 import 'theme.dart';
+import 'interaction.dart';
 
 /// Same 32-iteration Bézier inversion as the Rust clock. Flutter's stock
 /// Cubic solver is too coarse for finite-difference velocity preservation.
@@ -156,6 +157,7 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
     ..addListener(() {
       if (mounted) setState(() {});
     });
+  final _blockedPointers = <int>{};
   double _width = 0;
   void _settle() => _gesture.animateTo(
     0,
@@ -196,72 +198,89 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       _width = constraints.maxWidth;
-      return GestureDetector(
-        dragStartBehavior: DragStartBehavior.down,
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: widget.onChanged == null
-            ? null
-            : (_) {
-                _drag = 0;
-                _gesture.stop();
-              },
-        onHorizontalDragUpdate: widget.onChanged == null
-            ? null
-            : (d) {
-                _drag += d.delta.dx;
-                _gesture.value += d.delta.dx;
-              },
-        onHorizontalDragEnd: widget.onChanged == null
-            ? null
-            : (d) {
-                if (_drag.abs() > 80 ||
-                    d.velocity.pixelsPerSecond.dx.abs() > 600) {
-                  final direction = d.velocity.pixelsPerSecond.dx.abs() > 600
-                      ? d.velocity.pixelsPerSecond.dx
-                      : _drag;
-                  final next = (widget.selected + (direction < 0 ? 1 : -1))
-                      .clamp(0, widget.pageCount - 1);
-                  if (next != widget.selected) {
-                    widget.onChanged!(next);
-                    return;
-                  }
-                }
-                _settle();
-              },
-        onHorizontalDragCancel: _settle,
-        child: ClipRect(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              for (final page in _outgoing)
+      return BrockmannGestureScope(
+        pointers: _blockedPointers,
+        child: RawGestureDetector(
+          behavior: HitTestBehavior.translucent,
+          gestures: widget.onChanged == null
+              ? {}
+              : {
+                  _PageSwipeRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                        _PageSwipeRecognizer
+                      >(() => _PageSwipeRecognizer(), (recognizer) {
+                        recognizer
+                          ..blockedPointers = _blockedPointers
+                          ..dragStartBehavior = DragStartBehavior.down
+                          ..onStart = (_) {
+                            _drag = 0;
+                            _gesture.stop();
+                          }
+                          ..onUpdate = (d) {
+                            _drag += d.delta.dx;
+                            _gesture.value += d.delta.dx;
+                          }
+                          ..onEnd = (d) {
+                            if (_drag.abs() > 80 ||
+                                d.velocity.pixelsPerSecond.dx.abs() > 600) {
+                              final direction =
+                                  d.velocity.pixelsPerSecond.dx.abs() > 600
+                                  ? d.velocity.pixelsPerSecond.dx
+                                  : _drag;
+                              final next =
+                                  (widget.selected + (direction < 0 ? 1 : -1))
+                                      .clamp(0, widget.pageCount - 1);
+                              if (next != widget.selected) {
+                                widget.onChanged!(next);
+                                return;
+                              }
+                            }
+                            _settle();
+                          }
+                          ..onCancel = _settle;
+                      }),
+                },
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                for (final page in _outgoing)
+                  _PageTransition(
+                    key: page.key,
+                    progress: page.progress,
+                    exiting: true,
+                    back: page.back,
+                    animateEntrance: true,
+                    onFinished: () {
+                      if (mounted) setState(() => _outgoing.remove(page));
+                    },
+                    child: page.child,
+                  ),
                 _PageTransition(
-                  key: page.key,
-                  progress: page.progress,
-                  exiting: true,
-                  back: page.back,
-                  animateEntrance: true,
-                  onFinished: () {
-                    if (mounted) setState(() => _outgoing.remove(page));
-                  },
-                  child: page.child,
+                  key: _current,
+                  progress: (_gesture.value.abs() / math.max(1, _width)).clamp(
+                    0.0,
+                    .85,
+                  ),
+                  exiting: false,
+                  back: _gesture.value > 0,
+                  animateEntrance: _animateEntrance,
+                  child: widget.child,
                 ),
-              _PageTransition(
-                key: _current,
-                progress: (_gesture.value.abs() / math.max(1, _width)).clamp(
-                  0.0,
-                  .85,
-                ),
-                exiting: false,
-                back: _gesture.value > 0,
-                animateEntrance: _animateEntrance,
-                child: widget.child,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     },
   );
+}
+
+class _PageSwipeRecognizer extends HorizontalDragGestureRecognizer {
+  Set<int> blockedPointers = {};
+  @override
+  bool isPointerAllowed(PointerEvent event) =>
+      !blockedPointers.contains(event.pointer) && super.isPointerAllowed(event);
 }
 
 class _PageTransition extends StatefulWidget {

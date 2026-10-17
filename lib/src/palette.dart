@@ -6,6 +6,7 @@ import 'theme.dart';
 import 'foundation.dart';
 import 'feedback.dart';
 import 'controls.dart';
+import 'interaction.dart';
 
 @immutable
 class BrockmannColorScheme {
@@ -347,63 +348,74 @@ class _BrockmannColorFieldState extends State<BrockmannColorField> {
 
             return Semantics(
               label: '${widget.label} saturation and brightness',
-              child: GestureDetector(
-                key: const ValueKey('brockmann-colour-plane'),
-                onTapUp: (_) => setState(() => _direct = false),
-                behavior: HitTestBehavior.opaque,
-                onTapDown: enabled ? (d) => set(d.localPosition) : null,
-                onPanStart: enabled ? (d) => set(d.localPosition) : null,
-                onPanUpdate: enabled ? (d) => set(d.localPosition) : null,
-                onPanEnd: (_) => setState(() => _direct = false),
-                onPanCancel: () => setState(() => _direct = false),
-                child: SizedBox(
-                  height: 192,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: HSVColor.fromAHSV(
-                              1,
-                              colour.hue,
-                              1,
-                              1,
-                            ).toColor(),
-                            gradient: const LinearGradient(
-                              colors: [Colors.white, Colors.transparent],
+              child: BrockmannInteractionRegion(
+                enabled: enabled,
+                child: GestureDetector(
+                  key: const ValueKey('brockmann-colour-plane'),
+                  onTapUp: enabled
+                      ? (_) => setState(() => _direct = false)
+                      : null,
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: enabled ? (d) => set(d.localPosition) : null,
+                  onPanStart: enabled ? (d) => set(d.localPosition) : null,
+                  onPanUpdate: enabled ? (d) => set(d.localPosition) : null,
+                  onPanEnd: enabled
+                      ? (_) => setState(() => _direct = false)
+                      : null,
+                  onPanCancel: enabled
+                      ? () => setState(() => _direct = false)
+                      : null,
+                  child: SizedBox(
+                    height: 192,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: HSVColor.fromAHSV(
+                                1,
+                                colour.hue,
+                                1,
+                                1,
+                              ).toColor(),
+                              gradient: const LinearGradient(
+                                colors: [Colors.white, Colors.transparent],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Colors.black],
+                        const Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, Colors.black],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      AnimatedPositioned(
-                        duration: _direct ? Duration.zero : t.duration(c, 180),
-                        curve: Curves.easeOutCubic,
-                        left: colour.saturation * (box.maxWidth - 24),
-                        top: (1 - colour.value) * 168,
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black, spreadRadius: 1),
-                            ],
+                        AnimatedPositioned(
+                          duration: _direct
+                              ? Duration.zero
+                              : t.duration(c, 180),
+                          curve: Curves.easeOutCubic,
+                          left: colour.saturation * (box.maxWidth - 24),
+                          top: (1 - colour.value) * 168,
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black, spreadRadius: 1),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

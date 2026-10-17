@@ -8,6 +8,7 @@ import 'theme.dart';
 import 'foundation.dart';
 import 'feedback.dart';
 import 'motion.dart';
+import 'interaction.dart';
 
 enum BrockmannButtonStyle { primary, secondary, text }
 
@@ -396,72 +397,91 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
                     );
                   }
 
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    dragStartBehavior: DragStartBehavior.down,
-                    onTapDown: enabled
-                        ? (d) {
-                            final thumb =
-                                12 +
-                                (widget.value - widget.min) /
-                                    (widget.max - widget.min) *
-                                    (b.maxWidth - 24);
-                            _grabOffset =
-                                (d.localPosition.dx - thumb).abs() <= 24
-                                ? d.localPosition.dx - thumb
-                                : 0;
-                            set(d.localPosition);
-                          }
-                        : null,
-                    onTapUp: enabled
-                        ? (d) {
-                            set(d.localPosition);
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) setState(() => _direct = false);
-                            });
-                          }
-                        : null,
-                    onHorizontalDragStart: enabled
-                        ? (d) {
-                            final thumb =
-                                12 +
-                                (widget.value - widget.min) /
-                                    (widget.max - widget.min) *
-                                    (b.maxWidth - 24);
-                            _grabOffset =
-                                (d.localPosition.dx - thumb).abs() <= 24
-                                ? d.localPosition.dx - thumb
-                                : 0;
-                            set(d.localPosition);
-                          }
-                        : null,
-                    onHorizontalDragUpdate: enabled
-                        ? (d) => set(d.localPosition)
-                        : null,
-                    onHorizontalDragEnd: (_) => setState(() => _direct = false),
-                    onHorizontalDragCancel: () =>
-                        setState(() => _direct = false),
-                    onDoubleTap: enabled && widget.defaultValue != null
-                        ? () {
-                            setState(() => _direct = false);
-                            widget.onChanged!(widget.defaultValue!);
-                          }
-                        : null,
-                    child: SizedBox(
-                      height: 48,
-                      width: double.infinity,
-                      child: CustomPaint(
-                        painter: _SliderPainter(
-                          gradient: widget.trackGradient,
-                          value:
-                              ((visual - widget.min) /
-                                      (widget.max - widget.min))
-                                  .clamp(0, 1),
-                          zero: widget.min < 0 && widget.max > 0
-                              ? -widget.min / (widget.max - widget.min)
-                              : 0,
-                          theme: t,
-                          enabled: enabled,
+                  return BrockmannInteractionRegion(
+                    enabled: enabled,
+                    child: BrockmannHandleFeedback(
+                      enabled: enabled,
+                      isHandle: (p, size) =>
+                          (p.dx -
+                                  (12 +
+                                      (widget.value - widget.min) /
+                                          (widget.max - widget.min) *
+                                          (size.width - 24)))
+                              .abs() <=
+                          24,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        dragStartBehavior: DragStartBehavior.down,
+                        onTapDown: enabled
+                            ? (d) {
+                                final thumb =
+                                    12 +
+                                    (widget.value - widget.min) /
+                                        (widget.max - widget.min) *
+                                        (b.maxWidth - 24);
+                                _grabOffset =
+                                    (d.localPosition.dx - thumb).abs() <= 24
+                                    ? d.localPosition.dx - thumb
+                                    : 0;
+                                set(d.localPosition);
+                              }
+                            : null,
+                        onTapUp: enabled
+                            ? (d) {
+                                set(d.localPosition);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (mounted) setState(() => _direct = false);
+                                });
+                              }
+                            : null,
+                        onHorizontalDragStart: enabled
+                            ? (d) {
+                                final thumb =
+                                    12 +
+                                    (widget.value - widget.min) /
+                                        (widget.max - widget.min) *
+                                        (b.maxWidth - 24);
+                                _grabOffset =
+                                    (d.localPosition.dx - thumb).abs() <= 24
+                                    ? d.localPosition.dx - thumb
+                                    : 0;
+                                set(d.localPosition);
+                              }
+                            : null,
+                        onHorizontalDragUpdate: enabled
+                            ? (d) => set(d.localPosition)
+                            : null,
+                        onHorizontalDragEnd: enabled
+                            ? (_) => setState(() => _direct = false)
+                            : null,
+                        onHorizontalDragCancel: enabled
+                            ? () => setState(() => _direct = false)
+                            : null,
+                        onDoubleTap: enabled && widget.defaultValue != null
+                            ? () {
+                                setState(() => _direct = false);
+                                widget.onChanged!(widget.defaultValue!);
+                              }
+                            : null,
+                        child: SizedBox(
+                          height: 48,
+                          width: double.infinity,
+                          child: CustomPaint(
+                            painter: _SliderPainter(
+                              gradient: widget.trackGradient,
+                              value:
+                                  ((visual - widget.min) /
+                                          (widget.max - widget.min))
+                                      .clamp(0, 1),
+                              zero: widget.min < 0 && widget.max > 0
+                                  ? -widget.min / (widget.max - widget.min)
+                                  : 0,
+                              theme: t,
+                              enabled: enabled,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -629,88 +649,94 @@ class _BrockmannKnobState extends State<BrockmannKnob> {
           widget.onChanged!(next.clamp(widget.min, widget.max));
           return KeyEventResult.handled;
         },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          dragStartBehavior: DragStartBehavior.down,
-          onTapUp: enabled ? (d) => tap(d.globalPosition) : null,
-          onPanStart: enabled
-              ? (d) {
-                  final p = relative(d.globalPosition);
-                  _radial = p.distance >= 20;
-                  _angle = angle(p);
-                  _dragValue = widget.value;
-                  setState(() => _dragging = true);
-                }
-              : null,
-          onPanEnd: (_) => setState(() => _dragging = false),
-          onPanCancel: () => setState(() => _dragging = false),
-          onPanUpdate: enabled
-              ? (d) {
-                  double delta;
-                  if (_radial) {
-                    final next = angle(relative(d.globalPosition));
-                    delta =
-                        (next - _angle + math.pi * 3) % (math.pi * 2) - math.pi;
-                    _angle = next;
-                    delta /= math.pi * 1.5;
-                  } else {
-                    delta = -d.delta.dy / 140;
+        child: BrockmannInteractionRegion(
+          enabled: enabled,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            dragStartBehavior: DragStartBehavior.down,
+            onTapUp: enabled ? (d) => tap(d.globalPosition) : null,
+            onPanStart: enabled
+                ? (d) {
+                    final p = relative(d.globalPosition);
+                    _radial = p.distance >= 20;
+                    _angle = angle(p);
+                    _dragValue = widget.value;
+                    setState(() => _dragging = true);
                   }
-                  _dragValue =
-                      (_dragValue +
-                              delta *
-                                  (widget.max - widget.min) *
-                                  (HardwareKeyboard.instance.isShiftPressed
-                                      ? .1
-                                      : 1))
-                          .clamp(widget.min, widget.max);
-                  widget.onChanged!(_dragValue);
-                }
-              : null,
-          onDoubleTap: enabled && widget.defaultValue != null
-              ? () => widget.onChanged!(widget.defaultValue!)
-              : null,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 96, minHeight: 112),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  key: _dialKey,
-                  width: 96,
-                  height: 96,
-                  child: BrockmannMotion(
-                    value: widget.value,
-                    immediate: _dragging,
-                    builder: (c, visual) => CustomPaint(
-                      painter: _KnobPainter(
-                        ((visual - widget.min) / (widget.max - widget.min))
-                            .clamp(0, 1),
-                        t,
-                        enabled,
-                      ),
-                      child: Center(
-                        child: ExcludeSemantics(
-                          child: BrockmannText(
-                            widget.formatValue?.call(visual) ??
-                                visual.toStringAsFixed(
-                                  widget.max - widget.min > 10 ? 0 : 2,
-                                ),
-                            role: BrockmannType.monoValue,
-                            color: enabled ? t.foreground : t.disabled,
+                : null,
+            onPanEnd: enabled ? (_) => setState(() => _dragging = false) : null,
+            onPanCancel: enabled
+                ? () => setState(() => _dragging = false)
+                : null,
+            onPanUpdate: enabled
+                ? (d) {
+                    double delta;
+                    if (_radial) {
+                      final next = angle(relative(d.globalPosition));
+                      delta =
+                          (next - _angle + math.pi * 3) % (math.pi * 2) -
+                          math.pi;
+                      _angle = next;
+                      delta /= math.pi * 1.5;
+                    } else {
+                      delta = -d.delta.dy / 140;
+                    }
+                    _dragValue =
+                        (_dragValue +
+                                delta *
+                                    (widget.max - widget.min) *
+                                    (HardwareKeyboard.instance.isShiftPressed
+                                        ? .1
+                                        : 1))
+                            .clamp(widget.min, widget.max);
+                    widget.onChanged!(_dragValue);
+                  }
+                : null,
+            onDoubleTap: enabled && widget.defaultValue != null
+                ? () => widget.onChanged!(widget.defaultValue!)
+                : null,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 96, minHeight: 112),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    key: _dialKey,
+                    width: 96,
+                    height: 96,
+                    child: BrockmannMotion(
+                      value: widget.value,
+                      immediate: _dragging,
+                      builder: (c, visual) => CustomPaint(
+                        painter: _KnobPainter(
+                          ((visual - widget.min) / (widget.max - widget.min))
+                              .clamp(0, 1),
+                          t,
+                          enabled,
+                        ),
+                        child: Center(
+                          child: ExcludeSemantics(
+                            child: BrockmannText(
+                              widget.formatValue?.call(visual) ??
+                                  visual.toStringAsFixed(
+                                    widget.max - widget.min > 10 ? 0 : 2,
+                                  ),
+                              role: BrockmannType.monoValue,
+                              color: enabled ? t.foreground : t.disabled,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                BrockmannText(
-                  widget.label,
-                  role: BrockmannType.label,
-                  color: enabled ? t.secondary : t.disabled,
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  BrockmannText(
+                    widget.label,
+                    role: BrockmannType.label,
+                    color: enabled ? t.secondary : t.disabled,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

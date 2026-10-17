@@ -1,5 +1,9 @@
 ## 0.2.0 (unreleased)
 
+- Give direct-input surfaces ownership over page swipes and surrounding scrolling; add a reusable interaction region and one handle-pickup haptic.
+- Replace Material calendar/time dialogs with a custom calendar and 24-hour numeral wheels, including draft confirmation, bounds and accessibility.
+- Make core sheets, menus, search, disclosure and picker navigation typography-led; remove the bottom navbar showcase and make tag deletion real.
+
 - Replace historical ribbon styling with animated palette tiles and a saturation/brightness editor with hue and optional alpha.
 - Add full-page/anchored dropdown presentation, Android predictive-back routes, directional scroll-edge stretch, adaptive and monochrome launcher layers.
 - Improve dial arc/centre interaction and slider grab offset; fix stretched vertical meter geometry.

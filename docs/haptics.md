@@ -54,3 +54,7 @@ Inject a `BrockmannHapticBackend` in tests. Extend the abstract backend to inher
 ## Sources
 
 Android recommends semantic view feedback for ordinary interactions, honoring user settings without requesting vibration permissions: [Haptics API reference](https://developer.android.com/develop/ui/views/haptics/haptics-apis), [Add haptic feedback to events](https://developer.android.com/develop/ui/views/haptics/haptic-feedback). The broader principles favor clear, consistent tactile effects over indiscriminate buzzing: [Android haptics UX foundation](https://source.android.com/docs/core/interaction/haptics/haptics-ux-foundation).
+
+## Handle pickup
+
+Interactive sliders and range handles use a single drag-start impact. Hold a handle for 160 ms or begin dragging it to receive the pickup response once; moving it further does not produce additional ticks. Plain track taps are not impacts. This uses the same OS-respecting feedback controller as reorder pickup, with no audio and no vibration permission. Set haptics off to suppress it.

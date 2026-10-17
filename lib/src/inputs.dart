@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 import 'foundation.dart';
+import 'interaction.dart';
 
 /// Label and control share a 48 dp touch target. Null is a mixed value.
 class BrockmannCheckbox extends StatelessWidget {
@@ -231,12 +232,24 @@ class BrockmannRangeSlider extends StatelessWidget {
             trackHeight: 3,
             rangeThumbShape: const _SquareRangeThumb(),
           ),
-          child: RangeSlider(
-            values: values,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
+          child: BrockmannInteractionRegion(
+            enabled: onChanged != null,
+            child: BrockmannHandleFeedback(
+              enabled: onChanged != null,
+              isHandle: (p, size) {
+                final width = size.width - 48;
+                final a = 24 + (values.start - min) / (max - min) * width,
+                    b = 24 + (values.end - min) / (max - min) * width;
+                return (p.dx - a).abs() <= 24 || (p.dx - b).abs() <= 24;
+              },
+              child: RangeSlider(
+                values: values,
+                min: min,
+                max: max,
+                divisions: divisions,
+                onChanged: onChanged,
+              ),
+            ),
           ),
         ),
       ],
@@ -349,10 +362,13 @@ class BrockmannChip extends StatelessWidget {
             ),
           ),
           if (onDeleted != null)
-            BrockmannIconButton(
-              icon: BrockmannIcon.x,
+            BrockmannPressable(
               label: 'Remove $label',
               onPressed: onDeleted,
+              builder: (c, p) => const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                child: BrockmannText('remove', role: BrockmannType.caption),
+              ),
             ),
         ],
       ),
@@ -434,11 +450,11 @@ class BrockmannEmptyState extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.icon = BrockmannIcon.dotsThree,
+    this.icon,
     this.action,
   });
   final String title, message;
-  final BrockmannIcon icon;
+  final BrockmannIcon? icon;
   final Widget? action;
   @override
   Widget build(BuildContext context) => Padding(
@@ -446,8 +462,10 @@ class BrockmannEmptyState extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        BrockmannGlyph(icon, size: 40),
-        const SizedBox(height: 16),
+        if (icon != null) ...[
+          BrockmannGlyph(icon!, size: 40),
+          const SizedBox(height: 16),
+        ],
         BrockmannText(title, role: BrockmannType.heading),
         const SizedBox(height: 8),
         BrockmannText(message, color: context.brockmann.secondary),
@@ -475,33 +493,31 @@ class BrockmannSearchField extends StatelessWidget {
       builder: (c, value, _) => TextField(
         controller: controller,
         onChanged: onChanged,
-        style: BrockmannType.body.style(color: t.foreground),
+        style: BrockmannType.heading.style(color: t.foreground),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: const Padding(
-            padding: EdgeInsets.all(12),
-            child: BrockmannGlyph(BrockmannIcon.search),
-          ),
+          labelStyle: BrockmannType.label.style(color: t.secondary),
           suffixIcon: value.text.isEmpty
               ? null
-              : BrockmannIconButton(
-                  icon: BrockmannIcon.x,
-                  label: 'Clear $label',
+              : TextButton(
                   onPressed: () {
                     controller.clear();
                     onChanged?.call('');
                   },
+                  style: TextButton.styleFrom(
+                    foregroundColor: t.foreground,
+                    minimumSize: const Size(64, 48),
+                  ),
+                  child: const Text('clear'),
                 ),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
+          border: UnderlineInputBorder(borderSide: BorderSide(color: t.line)),
+          enabledBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: t.line),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.zero,
+          focusedBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: t.foreground),
           ),
-          contentPadding: const EdgeInsets.all(16),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );
@@ -513,11 +529,11 @@ class BrockmannBanner extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    this.icon = BrockmannIcon.info,
+    this.icon,
     this.onClose,
   });
   final String title, message;
-  final BrockmannIcon icon;
+  final BrockmannIcon? icon;
   final VoidCallback? onClose;
   @override
   Widget build(BuildContext context) => Container(
@@ -526,8 +542,7 @@ class BrockmannBanner extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        BrockmannGlyph(icon),
-        const SizedBox(width: 16),
+        if (icon != null) ...[BrockmannGlyph(icon!), const SizedBox(width: 16)],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,11 +554,7 @@ class BrockmannBanner extends StatelessWidget {
           ),
         ),
         if (onClose != null)
-          BrockmannIconButton(
-            icon: BrockmannIcon.x,
-            label: 'Dismiss $title',
-            onPressed: onClose,
-          ),
+          TextButton(onPressed: onClose, child: const Text('dismiss')),
       ],
     ),
   );
