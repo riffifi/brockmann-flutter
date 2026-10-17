@@ -19,7 +19,7 @@ The Rust implementation in `../rust/brockmann` is the behavior reference. This p
 
 ## Deliberate Android differences and remaining boundaries
 
-Phone commands commit on tap release so scrolling can cancel activation. Touch targets have a 48 dp minimum; the historical ribbon is doubled in scale for mobile. Dropdowns become full selection pages on compact screens. Native Android Back and IME replace desktop Escape/clipboard plumbing where appropriate.
+Phone commands commit on tap release so scrolling can cancel activation. Discrete touch controls have a 48 dp minimum. The horizontal ribbon is a fitted continuous scrub surface with narrow samples; the grid offers individual large colour targets. The vertical ribbon is enlarged and scrolls. Dropdowns become full selection pages on compact screens. Native Android Back and IME replace desktop Escape/clipboard plumbing where appropriate.
 
 The Rust MIDI-device host, desktop cursor warping, TOML hot reload, debug grid overlays, and manual frame stepping are not Android features in this package. Flutter provides hot reload and DevTools. The standalone `Panorama`/continuum animation helpers are not exposed as widgets here. Android phones use the full-page selection transition.
 

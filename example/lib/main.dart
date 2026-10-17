@@ -132,7 +132,7 @@ class Catalogue extends StatefulWidget {
 }
 
 class _CatalogueState extends State<Catalogue> {
-  int page = 0, choice = 0, color = 11, companions = 2, variant = 0;
+  int page = 0, choice = 0, color = 11, companions = 0, variant = 0;
   bool enabled = true, vertical = false, busy = false;
   double amount = .64, tone = .4, weight = 400;
   final schemes = windows8Palette();

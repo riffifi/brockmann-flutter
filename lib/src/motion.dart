@@ -143,35 +143,28 @@ class BrockmannPageSwitcher extends StatefulWidget {
 }
 
 class _OutgoingPage {
-  const _OutgoingPage(
-    this.key,
-    this.child,
-    this.back,
-    this.offset,
-    this.exitDelta,
-  );
+  const _OutgoingPage(this.key, this.child, this.back, this.progress);
   final Key key;
   final Widget child;
   final bool back;
-  final double offset, exitDelta;
+  final double progress;
 }
 
 class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
     with SingleTickerProviderStateMixin {
-  late final _slide = AnimationController.unbounded(vsync: this)
+  late final _gesture = AnimationController.unbounded(vsync: this)
     ..addListener(() {
       if (mounted) setState(() {});
     });
-  bool _swipeCommit = false;
   double _width = 0;
-  void _settle() => _slide.animateTo(
+  void _settle() => _gesture.animateTo(
     0,
     duration: context.brockmann.duration(context, 240),
     curve: brockmannOutExpo,
   );
   @override
   void dispose() {
-    _slide.dispose();
+    _gesture.dispose();
     super.dispose();
   }
 
@@ -187,23 +180,15 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
         _OutgoingPage(
           _current,
           old.child,
-          widget.selected < old.selected,
-          _slide.value,
-          _swipeCommit
-              ? (widget.selected > old.selected ? -_width : _width) -
-                    _slide.value
-              : 0,
+          _gesture.value == 0
+              ? widget.selected < old.selected
+              : _gesture.value > 0,
+          (_gesture.value.abs() / math.max(1, _width)).clamp(0.0, .85),
         ),
       );
       _current = UniqueKey();
-      _animateEntrance = !_swipeCommit;
-      if (_swipeCommit) {
-        _slide.value += widget.selected > old.selected ? _width : -_width;
-        _swipeCommit = false;
-        _settle();
-      } else {
-        _slide.value = 0;
-      }
+      _animateEntrance = true;
+      _gesture.value = 0;
     }
   }
 
@@ -218,13 +203,13 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
             ? null
             : (_) {
                 _drag = 0;
-                _slide.stop();
+                _gesture.stop();
               },
         onHorizontalDragUpdate: widget.onChanged == null
             ? null
             : (d) {
                 _drag += d.delta.dx;
-                _slide.value += d.delta.dx;
+                _gesture.value += d.delta.dx;
               },
         onHorizontalDragEnd: widget.onChanged == null
             ? null
@@ -237,7 +222,6 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
                   final next = (widget.selected + (direction < 0 ? 1 : -1))
                       .clamp(0, widget.pageCount - 1);
                   if (next != widget.selected) {
-                    _swipeCommit = true;
                     widget.onChanged!(next);
                     return;
                   }
@@ -252,8 +236,7 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
               for (final page in _outgoing)
                 _PageTransition(
                   key: page.key,
-                  offset: page.offset,
-                  exitDelta: page.exitDelta,
+                  progress: page.progress,
                   exiting: true,
                   back: page.back,
                   animateEntrance: true,
@@ -264,9 +247,12 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
                 ),
               _PageTransition(
                 key: _current,
-                offset: _slide.value,
+                progress: (_gesture.value.abs() / math.max(1, _width)).clamp(
+                  0.0,
+                  .85,
+                ),
                 exiting: false,
-                back: false,
+                back: _gesture.value > 0,
                 animateEntrance: _animateEntrance,
                 child: widget.child,
               ),
@@ -286,10 +272,9 @@ class _PageTransition extends StatefulWidget {
     required this.animateEntrance,
     required this.child,
     this.onFinished,
-    this.offset = 0,
-    this.exitDelta = 0,
+    this.progress = 0,
   });
-  final double offset, exitDelta;
+  final double progress;
   final bool exiting, back, animateEntrance;
   final Widget child;
   final VoidCallback? onFinished;
@@ -328,7 +313,7 @@ class _PageTransitionState extends State<_PageTransition>
       _entry.stop();
       _exit.duration = context.brockmann.duration(
         context,
-        widget.exitDelta == 0 ? 250 : 240,
+        (250 * (1 - widget.progress)).round(),
       );
       _exit.forward(from: 0);
     }
@@ -347,15 +332,12 @@ class _PageTransitionState extends State<_PageTransition>
     child: RepaintBoundary(child: widget.child),
     builder: (c, child) {
       final reduced = c.brockmann.motionReduced(c);
-      final swipeExit = widget.exitDelta != 0;
-      final t = (swipeExit ? brockmannOutExpo : brockmannInExpo).transform(
-        _exit.value,
-      );
+      final t = widget.exiting
+          ? widget.progress +
+                (1 - widget.progress) * brockmannInExpo.transform(_exit.value)
+          : widget.progress;
       final matrix = Matrix4.identity()..setEntry(3, 2, -1 / 800);
       if (!reduced) {
-        matrix.translateByDouble(widget.offset + widget.exitDelta * t, 0, 0, 1);
-      }
-      if (widget.exiting && !reduced && !swipeExit) {
         matrix.rotateY((widget.back ? -1 : 1) * 50 * math.pi / 180 * t);
       }
       return IgnorePointer(
@@ -368,9 +350,8 @@ class _PageTransitionState extends State<_PageTransition>
               alignment: Alignment.centerLeft,
               transform: matrix,
               child: Opacity(
-                opacity: widget.exiting
-                    ? (swipeExit && !reduced ? 1 : 1 - t)
-                    : (reduced ? _entry.value : 1),
+                opacity:
+                    (1 - t) * (reduced && !widget.exiting ? _entry.value : 1),
                 child: TickerMode(
                   enabled: !widget.exiting,
                   child: _PageMotion(

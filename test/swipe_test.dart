@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Page follows each finger delta and cancels a short drag', (
+  testWidgets('Finger scrubs turnstile and release retains feather entry', (
     tester,
   ) async {
     var selected = 0;
@@ -15,48 +15,49 @@ void main() {
               selected: selected,
               pageCount: 3,
               onChanged: (v) => set(() => selected = v),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Text('page $selected'),
-              ),
+              child: BrockmannFeather(index: 0, child: Text('page $selected')),
             ),
           ),
         ),
       ),
     );
+    Transform turn(String label) => tester.widget<Transform>(
+      find
+          .ancestor(of: find.text(label), matching: find.byType(Transform))
+          .last,
+    );
     final finger = await tester.startGesture(const Offset(300, 200));
     await finger.moveBy(const Offset(-25, 0));
     await tester.pump();
-    final before = tester.getTopLeft(find.text('page 0'));
+    final first = turn('page 0').transform.entry(0, 0);
     await finger.moveBy(const Offset(-20, 0));
     await tester.pump();
-    expect(
-      tester.getTopLeft(find.text('page 0')).dx - before.dx,
-      closeTo(-20, .01),
-    );
+    expect(turn('page 0').transform.entry(0, 0), lessThan(first));
+    expect(turn('page 0').transform.entry(0, 3), 0);
     await tester.pump(const Duration(milliseconds: 300));
     await finger.up();
     await tester.pumpAndSettle();
     expect(selected, 0);
-    expect(tester.getTopLeft(find.text('page 0')).dx, 0);
+    expect(turn('page 0').transform.entry(0, 0), 1);
     final swipe = await tester.startGesture(const Offset(300, 200));
     await swipe.moveBy(const Offset(-140, 0));
     await tester.pump();
-    final releasePosition = tester.getTopLeft(find.text('page 0')).dx;
+    final release = turn('page 0').transform.entry(0, 0);
     await swipe.up();
     await tester.pump();
     expect(selected, 1);
-    expect(tester.getTopLeft(find.text('page 0')).dx, releasePosition);
+    expect(turn('page 0').transform.entry(0, 0), release);
     await tester.pump(const Duration(milliseconds: 100));
-    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
-    expect(
-      tester.getTopLeft(find.text('page 1')).dx -
-          tester.getTopLeft(find.text('page 0')).dx,
-      closeTo(width, .01),
+    expect(turn('page 0').transform.entry(0, 0), lessThan(release));
+    final feather = tester.widget<Transform>(
+      find
+          .ancestor(of: find.text('page 1'), matching: find.byType(Transform))
+          .first,
     );
+    expect(feather.transform.entry(0, 3), greaterThan(0));
     await tester.pumpAndSettle();
     expect(find.text('page 0'), findsNothing);
-    expect(tester.getTopLeft(find.text('page 1')).dx, 0);
+    expect(turn('page 1').transform.entry(0, 0), 1);
   });
 
   testWidgets(
