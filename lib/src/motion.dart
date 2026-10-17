@@ -141,99 +141,172 @@ class BrockmannPageSwitcher extends StatefulWidget {
   State<BrockmannPageSwitcher> createState() => _BrockmannPageSwitcherState();
 }
 
+class _OutgoingPage {
+  const _OutgoingPage(this.key, this.child, this.back);
+  final Key key;
+  final Widget child;
+  final bool back;
+}
+
 class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher> {
-  bool _back = false;
+  final _outgoing = <_OutgoingPage>[];
+  Key _current = UniqueKey();
+  bool _animateEntrance = false;
   double _drag = 0;
   @override
   void didUpdateWidget(BrockmannPageSwitcher old) {
     super.didUpdateWidget(old);
-    if (old.selected != widget.selected) _back = widget.selected < old.selected;
+    if (old.selected != widget.selected) {
+      _outgoing.add(
+        _OutgoingPage(_current, old.child, widget.selected < old.selected),
+      );
+      _current = UniqueKey();
+      _animateEntrance = true;
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = context.brockmann;
-    final reduced = theme.motionReduced(context);
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragStart: widget.onChanged == null ? null : (_) => _drag = 0,
-      onHorizontalDragUpdate: widget.onChanged == null
-          ? null
-          : (d) => _drag += d.delta.dx,
-      onHorizontalDragEnd: widget.onChanged == null
-          ? null
-          : (d) {
-              if (_drag.abs() > 80 ||
-                  d.velocity.pixelsPerSecond.dx.abs() > 600) {
-                final direction = d.velocity.pixelsPerSecond.dx.abs() > 600
-                    ? d.velocity.pixelsPerSecond.dx
-                    : _drag;
-                final next = (widget.selected + (direction < 0 ? 1 : -1)).clamp(
-                  0,
-                  widget.pageCount - 1,
-                );
-                if (next != widget.selected) widget.onChanged!(next);
-              }
-            },
-      child: ClipRect(
-        child: AnimatedSwitcher(
-          duration: theme.duration(context, 580),
-          reverseDuration: theme.duration(context, 250),
-          layoutBuilder: (current, previous) =>
-              Stack(fit: StackFit.expand, children: [...previous, ?current]),
-          transitionBuilder: (child, animation) {
-            var exitStart = 1.0;
-            var wasExiting = false;
-            Animation<double>? frozen;
-            return AnimatedBuilder(
-              animation: animation,
-              child: child,
-              builder: (c, child) {
-                final exiting = animation.status == AnimationStatus.reverse;
-                if (exiting && !wasExiting) {
-                  exitStart = animation.value;
-                  frozen = AlwaysStoppedAnimation(exitStart);
-                }
-                wasExiting = exiting;
-                final elapsed = exiting
-                    ? (exitStart - animation.value) /
-                          math.max(.000001, exitStart)
-                    : 0.0;
-                final t = brockmannInExpo.transform(elapsed.clamp(0, 1));
-                final matrix = Matrix4.identity()..setEntry(3, 2, -1 / 800);
-                if (exiting && !reduced) {
-                  matrix.rotateY((_back ? -1 : 1) * 50 * math.pi / 180 * t);
-                }
-                return IgnorePointer(
-                  ignoring: exiting,
-                  child: ExcludeSemantics(
-                    excluding: exiting,
-                    child: Transform(
-                      alignment: Alignment.centerLeft,
-                      transform: matrix,
-                      child: Opacity(
-                        opacity: exiting
-                            ? 1 - t
-                            : (reduced ? animation.value : 1),
-                        child: _PageMotion(
-                          animation: exiting ? frozen! : animation,
-                          child: child!,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onHorizontalDragStart: widget.onChanged == null ? null : (_) => _drag = 0,
+    onHorizontalDragUpdate: widget.onChanged == null
+        ? null
+        : (d) => _drag += d.delta.dx,
+    onHorizontalDragEnd: widget.onChanged == null
+        ? null
+        : (d) {
+            if (_drag.abs() > 80 || d.velocity.pixelsPerSecond.dx.abs() > 600) {
+              final direction = d.velocity.pixelsPerSecond.dx.abs() > 600
+                  ? d.velocity.pixelsPerSecond.dx
+                  : _drag;
+              final next = (widget.selected + (direction < 0 ? 1 : -1)).clamp(
+                0,
+                widget.pageCount - 1,
+              );
+              if (next != widget.selected) widget.onChanged!(next);
+            }
           },
-          child: KeyedSubtree(
-            key: ValueKey(widget.selected),
+    child: ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          for (final page in _outgoing)
+            _PageTransition(
+              key: page.key,
+              exiting: true,
+              back: page.back,
+              animateEntrance: true,
+              onFinished: () {
+                if (mounted) setState(() => _outgoing.remove(page));
+              },
+              child: page.child,
+            ),
+          _PageTransition(
+            key: _current,
+            exiting: false,
+            back: false,
+            animateEntrance: _animateEntrance,
             child: widget.child,
           ),
-        ),
+        ],
       ),
-    );
+    ),
+  );
+}
+
+class _PageTransition extends StatefulWidget {
+  const _PageTransition({
+    super.key,
+    required this.exiting,
+    required this.back,
+    required this.animateEntrance,
+    required this.child,
+    this.onFinished,
+  });
+  final bool exiting, back, animateEntrance;
+  final Widget child;
+  final VoidCallback? onFinished;
+  @override
+  State<_PageTransition> createState() => _PageTransitionState();
+}
+
+class _PageTransitionState extends State<_PageTransition>
+    with TickerProviderStateMixin {
+  late final _entry = AnimationController(
+    vsync: this,
+    value: widget.animateEntrance ? 0 : 1,
+  );
+  late final _exit = AnimationController(vsync: this)
+    ..addStatusListener((status) {
+      if (status == AnimationStatus.completed) widget.onFinished?.call();
+    });
+  late final _frames = Listenable.merge([_entry, _exit]);
+  Animation<double>? _frozen;
+  bool _started = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      _entry.duration = context.brockmann.duration(context, 580);
+      if (widget.animateEntrance) _entry.forward();
+    }
   }
+
+  @override
+  void didUpdateWidget(_PageTransition old) {
+    super.didUpdateWidget(old);
+    if (widget.exiting && !old.exiting) {
+      _frozen = AlwaysStoppedAnimation(_entry.value);
+      _entry.stop();
+      _exit.duration = context.brockmann.duration(context, 250);
+      _exit.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _entry.dispose();
+    _exit.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _frames,
+    child: RepaintBoundary(child: widget.child),
+    builder: (c, child) {
+      final reduced = c.brockmann.motionReduced(c);
+      final t = brockmannInExpo.transform(_exit.value);
+      final matrix = Matrix4.identity()..setEntry(3, 2, -1 / 800);
+      if (widget.exiting && !reduced) {
+        matrix.rotateY((widget.back ? -1 : 1) * 50 * math.pi / 180 * t);
+      }
+      return IgnorePointer(
+        ignoring: widget.exiting,
+        child: ExcludeSemantics(
+          excluding: widget.exiting,
+          child: ExcludeFocus(
+            excluding: widget.exiting,
+            child: Transform(
+              alignment: Alignment.centerLeft,
+              transform: matrix,
+              child: Opacity(
+                opacity: widget.exiting ? 1 - t : (reduced ? _entry.value : 1),
+                child: TickerMode(
+                  enabled: !widget.exiting,
+                  child: _PageMotion(
+                    animation: _frozen ?? _entry,
+                    child: child!,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 /// Wrap successive rows to reproduce Rust's 40 ms / 300 ms entry cascade.

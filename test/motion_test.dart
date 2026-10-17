@@ -195,4 +195,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
+  testWidgets('Rapid navigation preserves every outgoing page position', (
+    tester,
+  ) async {
+    int page = 0;
+    late StateSetter change;
+    await tester.pumpWidget(
+      BrockmannApp(
+        home: StatefulBuilder(
+          builder: (c, set) {
+            change = set;
+            return BrockmannPage(
+              scroll: false,
+              child: BrockmannPageSwitcher(
+                selected: page,
+                child: Column(
+                  children: [
+                    BrockmannFeather(index: 0, child: Text('heading $page')),
+                    BrockmannFeather(index: 4, child: Text('row $page')),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    change(() => page = 1);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    final first = tester.getTopLeft(find.text('heading 1'));
+    change(() => page = 2);
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('heading 1')), first);
+    await tester.pump(const Duration(milliseconds: 40));
+    final outgoing = tester.getTopLeft(find.text('heading 1'));
+    change(() => page = 3);
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('heading 1')), outgoing);
+    await tester.pumpAndSettle();
+    expect(find.text('heading 3'), findsOneWidget);
+    expect(find.text('heading 1'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

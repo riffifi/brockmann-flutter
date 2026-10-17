@@ -5,11 +5,11 @@ Validated on 17 October 2026 with Flutter 3.47.4 / Dart 3.13.3.
 ## Local checks
 
 - `flutter analyze`: no issues.
-- `flutter test` in the library: 16 passing tests.
+- `flutter test` in the library: 22 passing tests.
 - `flutter test` in the showcase: nine passing tests. Each catalogue page is sampled through intermediate animation frames at 320 and 412 dp, text scale 1 and 2, in both themes. A separate check verifies that editing survives navigation away and back.
 - Android arm64 profile APK builds successfully with the native SoundPool and Activity-aware haptic plugin.
 
-The library checks cover contrast, toggle reversal and drag commitment, active-tween continuity and idle scheduling, staggered entry, reduced spatial motion, retained pivot options, selection/cancellation, palette variants, flat reorder, independent audio/haptics, admission, lifecycle cancellation and native method-channel arguments.
+The library checks cover contrast, toggle reversal and drag commitment, active-tween continuity and idle scheduling, staggered entry, reduced spatial motion, retained pivot options, anchored text carry, first-step keyboard focus, early selection cancellation, overflowing lists, rapid page interruption, palette variants, flat reorder, independent audio/haptics, admission, lifecycle cancellation and native method-channel arguments.
 
 ## Physical Pixel 7
 
@@ -19,13 +19,13 @@ Latest profile sample:
 
 | Measurement | Result |
 | --- | --- |
-| Frames collected | 345 |
-| Build duration, p95 | 8.437 ms |
-| Raster duration, p95 | 17.049 ms |
+| Frames collected | 346 |
+| Build duration, p95 | 6.639 ms |
+| Raster duration, p95 | 15.704 ms |
 | Native sound bank | Ready |
 | Haptic request accepted | True |
 
-The first five frames are omitted from percentile calculations. This is a single end-to-end sample with cold page/glyph work and the phone's normal background workload, not a controlled sustained-refresh benchmark. Repaint boundaries reduced raster p95 from the earlier 21.190 ms sample to 17.049 ms. Some frames still exceed the 16.67 ms budget of a 60 Hz display, so these numbers do not establish perfectly smooth rendering at every refresh rate.
+The first five frames are omitted from percentile calculations. This is a single end-to-end sample with cold page/glyph work and the phone's normal background workload, not a controlled sustained-refresh benchmark. After adding page repaint boundaries, raster p95 measured 15.704 ms compared with 17.049 ms in the previous sample; workload variation also affects this comparison. The latest p95 fits a 60 Hz frame budget of 16.67 ms; individual frames can still exceed it, and this does not establish smooth rendering at every refresh rate.
 
 ## Reproduce
 

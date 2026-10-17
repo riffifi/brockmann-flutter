@@ -203,79 +203,186 @@ class _BrockmannPivotState extends State<BrockmannPivot> {
   }
 }
 
-class BrockmannPicker extends StatelessWidget {
+/// A controlled choice with a full-page phone list or an anchored wide-screen menu.
+class BrockmannPicker extends StatefulWidget {
   const BrockmannPicker({
     super.key,
     required this.label,
     required this.options,
     required this.selected,
     required this.onChanged,
-  }) : assert(selected >= 0),
-       assert(options.length == 0 || selected < options.length);
+  }) : assert(selected >= 0);
   final String label;
   final List<String> options;
   final int selected;
   final ValueChanged<int>? onChanged;
   @override
+  State<BrockmannPicker> createState() => _BrockmannPickerState();
+}
+
+class _BrockmannPickerState extends State<BrockmannPicker> {
+  final _fieldKey = GlobalKey(), _valueKey = GlobalKey();
+  bool _handoff = false, _open = false, _hover = false;
+  int get selected => widget.options.isEmpty
+      ? 0
+      : widget.selected.clamp(0, widget.options.length - 1);
+  Rect? _valueBounds() {
+    final field = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final value = _valueKey.currentContext?.findRenderObject() as RenderBox?;
+    if (field == null || value == null || !field.hasSize || !value.hasSize) {
+      return null;
+    }
+    final topLeft = value.localToGlobal(Offset.zero);
+    return Rect.fromLTWH(
+      topLeft.dx,
+      topLeft.dy,
+      field.size.width - 32,
+      value.size.height,
+    );
+  }
+
+  Future<void> _show() async {
+    if (_open || widget.onChanged == null || widget.options.isEmpty) return;
+    final field = _fieldKey.currentContext!.findRenderObject()! as RenderBox;
+    final value = _valueKey.currentContext!.findRenderObject()! as RenderBox;
+    final t = context.brockmann;
+    final media = MediaQuery.of(context);
+    final wide = media.size.width >= 720 && media.textScaler.scale(16) <= 24;
+    final feedback = BrockmannFeedbackScope.of(context);
+    final original = selected;
+    final route = _PickerRoute(
+      label: widget.label,
+      options: List.of(widget.options),
+      selected: original,
+      anchor: field.localToGlobal(Offset.zero) & field.size,
+      closedValue: Rect.fromLTWH(
+        value.localToGlobal(Offset.zero).dx,
+        value.localToGlobal(Offset.zero).dy,
+        field.size.width - 32,
+        value.size.height,
+      ),
+      liveValue: _valueBounds,
+      fullPage: !wide,
+      theme: t.copyWith(reduceMotion: t.motionReduced(context)),
+      onSelected: (index) {
+        if (index != original && mounted) {
+          widget.onChanged?.call(index);
+        }
+        feedback?.play(
+          index == original ? BrockmannSound.close : BrockmannSound.select,
+        );
+      },
+    );
+    setState(() {
+      _open = true;
+      _handoff = wide;
+    });
+    feedback?.play(BrockmannSound.open);
+    final result = await Navigator.of(context).push<int>(route);
+    if (result == null) feedback?.play(BrockmannSound.close);
+    // Keep the underlying copy hidden until the carried label has landed.
+    await route.completed;
+    if (mounted) {
+      setState(() {
+        _open = false;
+        _handoff = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = context.brockmann;
-    final enabled = onChanged != null && options.isNotEmpty;
-    return Builder(
-      builder: (anchorContext) => BrockmannPressable(
-        label: '$label, ${options.isEmpty ? 'No options' : options[selected]}',
-        onPressed: !enabled
-            ? null
-            : () async {
-                final box = anchorContext.findRenderObject()! as RenderBox;
-                final rect = box.localToGlobal(Offset.zero) & box.size;
-                final feedback = BrockmannFeedbackScope.of(context);
-                feedback?.play(BrockmannSound.open);
-                final result = await Navigator.of(context).push<int>(
-                  _PickerRoute(
-                    label: label,
-                    options: List.of(options),
-                    selected: selected,
-                    anchor: rect,
-                    theme: t.copyWith(reduceMotion: t.motionReduced(context)),
-                  ),
-                );
-                if (!context.mounted) return;
-                if (result != null && result != selected) {
-                  feedback?.play(BrockmannSound.select);
-                  onChanged?.call(result);
-                } else {
-                  feedback?.play(BrockmannSound.close);
-                }
-              },
-        builder: (c, p) => Container(
-          constraints: const BoxConstraints(minHeight: 80),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: p ? t.foreground : t.lineStrong,
-              width: p ? 2 : 1,
+    final enabled = widget.onChanged != null && widget.options.isNotEmpty;
+    return Visibility(
+      visible: !_handoff,
+      maintainSize: true,
+      maintainState: true,
+      maintainAnimation: true,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: BrockmannPressable(
+          key: _fieldKey,
+          label:
+              '${widget.label}, ${widget.options.isEmpty ? 'No options' : widget.options[selected]}',
+          onPressed: enabled ? _show : null,
+          builder: (c, p) => Container(
+            constraints: const BoxConstraints(minHeight: 80),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            foregroundDecoration: BoxDecoration(
+              border: Border.all(
+                color: !enabled
+                    ? Colors.transparent
+                    : p
+                    ? t.foreground
+                    : _hover
+                    ? t.lineStrong
+                    : Colors.transparent,
+                width: 2,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              BrockmannText(
-                label,
-                role: BrockmannType.label,
-                color: enabled ? t.secondary : t.disabled,
-              ),
-              const SizedBox(height: 4),
-              BrockmannText(
-                options.isEmpty ? 'No options' : options[selected],
-                role: BrockmannType.value,
-                color: enabled ? t.foreground : t.disabled,
-              ),
-            ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                BrockmannText(
+                  widget.label,
+                  role: BrockmannType.label,
+                  color: enabled ? t.secondary : t.disabled,
+                ),
+                const SizedBox(height: 4),
+                BrockmannText(
+                  widget.options.isEmpty
+                      ? 'No options'
+                      : widget.options[selected],
+                  key: _valueKey,
+                  role: BrockmannType.value,
+                  color: enabled ? t.foreground : t.disabled,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _PickerGeometry {
+  const _PickerGeometry(this.panel, this.rowHeight, this.textHeights);
+  final Rect panel;
+  final double rowHeight;
+  final List<double> textHeights;
+  Rect textRect(int index, double scroll) => Rect.fromLTWH(
+    panel.left + 16,
+    panel.top +
+        8 +
+        index * rowHeight -
+        scroll +
+        (rowHeight - textHeights[index]) / 2,
+    panel.width - 32,
+    textHeights[index],
+  );
+  Rect selectedPanel(int index, double scroll) => Rect.fromLTWH(
+    panel.left,
+    panel.top + index * rowHeight - scroll,
+    panel.width,
+    rowHeight + 16,
+  ).intersect(panel);
+}
+
+class _PickerExit {
+  const _PickerExit(
+    this.reveal,
+    this.text,
+    this.index,
+    this.start,
+    this.opacity,
+  );
+  final Rect reveal, text;
+  final int index;
+  final double start, opacity;
 }
 
 class _PickerRoute extends PopupRoute<int> {
@@ -284,13 +391,27 @@ class _PickerRoute extends PopupRoute<int> {
     required this.options,
     required this.selected,
     required this.anchor,
+    required this.closedValue,
+    required this.liveValue,
+    required this.fullPage,
     required this.theme,
+    required this.onSelected,
   });
   final String label;
   final List<String> options;
   final int selected;
-  final Rect anchor;
+  final Rect anchor, closedValue;
+  final Rect? Function() liveValue;
+  final bool fullPage;
   final BrockmannThemeData theme;
+  final ValueChanged<int> onSelected;
+  ScrollController? _scroll;
+  double _initialOffset = 0;
+  bool _closing = false;
+  _PickerGeometry? _geometry;
+  _PickerExit? _exit;
+  double get _offset =>
+      _scroll?.hasClients == true ? _scroll!.offset : _initialOffset;
   @override
   Color get barrierColor =>
       Colors.black.withValues(alpha: theme.light ? .4 : .6);
@@ -300,12 +421,73 @@ class _PickerRoute extends PopupRoute<int> {
   String get barrierLabel => 'Close $label';
   @override
   Duration get transitionDuration => Duration(
-    milliseconds: (theme.reduceMotion ? 100 : 440 * theme.motionScale).round(),
+    milliseconds:
+        (theme.reduceMotion ? 100 : (fullPage ? 440 : 220) * theme.motionScale)
+            .round(),
   );
   @override
   Duration get reverseTransitionDuration => Duration(
     milliseconds: (theme.reduceMotion ? 100 : 200 * theme.motionScale).round(),
   );
+  double get _opening => theme.reduceMotion
+      ? 1
+      : brockmannOutExpo.transform(
+          ((animation?.value ?? 1) * (fullPage ? 2 : 1)).clamp(0, 1),
+        );
+  Rect _reveal(_PickerGeometry geometry) => Rect.lerp(
+    geometry.selectedPanel(selected, _offset),
+    geometry.panel,
+    _opening,
+  )!;
+  double get _opacity {
+    final exit = _exit;
+    if (theme.reduceMotion) {
+      return exit == null
+          ? animation!.value
+          : (animation!.value / math.max(.000001, exit.start)).clamp(0, 1);
+    }
+    return exit == null
+        ? brockmannOutExpo.transform((animation!.value * 220 / 120).clamp(0, 1))
+        : exit.opacity *
+              (1 -
+                  brockmannInExpo.transform(
+                    ((exit.start - animation!.value) /
+                            math.max(.000001, exit.start))
+                        .clamp(0, 1),
+                  ));
+  }
+
+  @override
+  bool didPop(int? result) {
+    _closing = true;
+    final g = _geometry;
+    if (g != null && !fullPage) {
+      final chosen = result ?? selected;
+      final opacity = brockmannOutExpo.transform(
+        ((animation?.value ?? 1) * 220 / 120).clamp(0, 1),
+      );
+      _exit = _PickerExit(
+        _reveal(g),
+        g.textRect(chosen, _offset),
+        chosen,
+        animation!.value,
+        opacity,
+      );
+    }
+    final popped = super.didPop(result);
+    if (popped && !fullPage) {
+      // Always give the handoff its full duration, including an early dismissal.
+      controller?.animateBack(0, duration: reverseTransitionDuration);
+    }
+    return popped;
+  }
+
+  @override
+  void dispose() {
+    _scroll?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget buildPage(
     BuildContext context,
@@ -313,43 +495,82 @@ class _PickerRoute extends PopupRoute<int> {
     Animation<double> secondaryAnimation,
   ) {
     final media = MediaQuery.of(context);
-    final full = media.size.width < 720 || media.textScaler.scale(16) > 24;
-    final t = context.brockmann;
-    final rowHeight = math.max(56.0, media.textScaler.scale(24) + 24);
-    final top = media.padding.top + 16,
-        bottom = media.size.height - media.padding.bottom - 16;
-    final height = math.min(rowHeight * options.length + 16, bottom - top);
-    final width = math.min(
-      math.max(anchor.width, 280.0),
-      media.size.width - 48,
+    final width = fullPage
+        ? media.size.width - 48
+        : math.min(anchor.width, media.size.width - 48);
+    final role = fullPage ? BrockmannType.heading : BrockmannType.value;
+    final textHeights = options
+        .map((option) {
+          final measure = TextPainter(
+            text: TextSpan(text: option, style: role.style()),
+            textDirection: Directionality.of(context),
+            textScaler: media.textScaler,
+          )..layout(maxWidth: math.max(1, width - 32));
+          final height = measure.height;
+          measure.dispose();
+          return height;
+        })
+        .toList(growable: false);
+    final rowHeight = math.max(
+      fullPage ? 56.0 : 48.0,
+      textHeights.reduce(math.max) + 24,
+    );
+    final top = media.padding.top + 16;
+    final bottom = media.size.height - media.padding.bottom - 16;
+    final height = math.min(
+      rowHeight * options.length + 16,
+      math.max(0.0, bottom - top),
     );
     final x = anchor.left.clamp(
       24.0,
-      math.max(24, media.size.width - width - 24),
+      math.max(24.0, media.size.width - width - 24),
     );
-    final y =
-        (anchor.top +
-                32 -
-                (rowHeight - media.textScaler.scale(24)) / 2 -
-                selected * rowHeight -
-                8)
-            .clamp(top, math.max(top, bottom - height));
+    final desiredY =
+        closedValue.top -
+        (rowHeight - textHeights[selected]) / 2 -
+        8 -
+        selected * rowHeight;
+    final y = desiredY.clamp(top, math.max(top, bottom - height));
+    final geometry = _PickerGeometry(
+      Rect.fromLTWH(x.toDouble(), y.toDouble(), width, height),
+      rowHeight,
+      textHeights,
+    );
+    _geometry = geometry;
+    final initialScroll = fullPage
+        ? selected * rowHeight
+        : (geometry.textRect(selected, 0).top - closedValue.top).clamp(
+            0.0,
+            math.max(0.0, options.length * rowHeight + 16 - height),
+          );
+    if (_scroll == null) {
+      _initialOffset = initialScroll.toDouble();
+      _scroll = ScrollController(initialScrollOffset: _initialOffset);
+    }
     final list = _PickerList(
       label: label,
       options: options,
       selected: selected,
       rowHeight: rowHeight,
-      fullPage: full,
+      fullPage: fullPage,
       animation: animation,
+      scroll: _scroll!,
+      closingIndex: () => _exit?.index,
+      panelOpacity: () => _opacity,
+      onSelected: (index) {
+        if (_closing) return;
+        onSelected(index);
+        Navigator.pop(context, index);
+      },
     );
     return Semantics(
       scopesRoute: true,
       explicitChildNodes: true,
       namesRoute: true,
       label: label,
-      child: full
+      child: fullPage
           ? ColoredBox(
-              color: t.background,
+              color: theme.background,
               child: SafeArea(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -381,54 +602,93 @@ class _PickerRoute extends PopupRoute<int> {
                 ),
               ),
             )
-          : Stack(
-              children: [
-                Positioned(
-                  left: x.toDouble(),
-                  top: y.toDouble(),
-                  width: width,
-                  height: height,
-                  child: AnimatedBuilder(
-                    animation: animation,
-                    builder: (c, _) {
-                      final opening =
-                          animation.status != AnimationStatus.reverse;
-                      final progress = t.motionReduced(c)
-                          ? 1.0
-                          : brockmannOutExpo.transform(
-                              (animation.value * (opening ? 2 : 1)).clamp(0, 1),
-                            );
-                      final rowTop = (8 + selected * rowHeight).clamp(
-                        0.0,
-                        math.max(0.0, height - rowHeight),
+          : AnimatedBuilder(
+              animation: animation,
+              child: list,
+              builder: (c, list) {
+                final exit = _exit;
+                final closing = exit == null
+                    ? 0.0
+                    : brockmannOutExpo.transform(
+                        ((exit.start - animation.value) /
+                                math.max(.000001, exit.start))
+                            .clamp(0, 1),
                       );
-                      final reveal = Rect.lerp(
+                final destination = liveValue() ?? closedValue;
+                final target = Rect.fromLTWH(
+                  destination.left - 16,
+                  destination.top - (rowHeight - destination.height) / 2 - 8,
+                  destination.width + 32,
+                  rowHeight + 16,
+                );
+                final panel = exit == null
+                    ? _reveal(geometry)
+                    : theme.reduceMotion
+                    ? geometry.panel
+                    : Rect.lerp(exit.reveal, target, closing)!;
+                final opacity = _opacity;
+                final carried = exit == null
+                    ? null
+                    : theme.reduceMotion
+                    ? exit.text
+                    : Rect.lerp(
+                        exit.text,
                         Rect.fromLTWH(
-                          0,
-                          rowTop.toDouble(),
-                          width,
-                          math.min(height, rowHeight + 16),
+                          destination.left,
+                          destination.top,
+                          destination.width,
+                          geometry.textHeights[exit.index],
                         ),
-                        Rect.fromLTWH(0, 0, width, height),
-                        progress,
-                      )!;
-                      return ClipRect(
-                        clipper: _PickerClip(reveal),
+                        closing,
+                      );
+                return Stack(
+                  children: [
+                    Positioned.fromRect(
+                      rect: panel,
+                      child: Opacity(
+                        opacity: opacity,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: t.surface,
-                            border: Border.all(color: t.line, width: 0),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: list,
+                            color: theme.surface,
+                            border: Border.all(color: theme.line, width: 0),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                      ),
+                    ),
+                    Positioned.fromRect(
+                      rect: geometry.panel,
+                      child: ClipRect(
+                        clipper: _PickerClip(
+                          panel.shift(-geometry.panel.topLeft),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: list,
+                        ),
+                      ),
+                    ),
+                    if (carried != null)
+                      Positioned.fromRect(
+                        rect: carried,
+                        child: ExcludeSemantics(
+                          child: Opacity(
+                            opacity: theme.reduceMotion ? opacity : 1,
+                            child: BrockmannText(
+                              options[exit!.index],
+                              key: const ValueKey('brockmann-picker-carry'),
+                              role: BrockmannType.value,
+                              color: Color.lerp(
+                                theme.accentText,
+                                theme.foreground,
+                                closing,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
     );
   }
@@ -440,24 +700,35 @@ class _PickerRoute extends PopupRoute<int> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final media = MediaQuery.of(context);
-    if (media.size.width >= 720 && media.textScaler.scale(16) <= 24) {
-      return child;
+    if (!fullPage) {
+      return AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (c, child) => IgnorePointer(
+          ignoring: _closing,
+          child: ExcludeFocus(excluding: _closing, child: child!),
+        ),
+      );
     }
     return AnimatedBuilder(
       animation: animation,
       child: child,
       builder: (c, child) {
         final exiting = animation.status == AnimationStatus.reverse;
-        final reduced = c.brockmann.motionReduced(c);
         final f = exiting
             ? 1 - brockmannInExpo.transform(1 - animation.value)
             : brockmannOutExpo.transform((animation.value * 2).clamp(0, 1));
-        return Opacity(
-          opacity: f,
-          child: Transform.translate(
-            offset: Offset(0, reduced ? 0 : 24 * (1 - f)),
-            child: child,
+        return IgnorePointer(
+          ignoring: _closing,
+          child: ExcludeFocus(
+            excluding: _closing,
+            child: Opacity(
+              opacity: f,
+              child: Transform.translate(
+                offset: Offset(0, theme.reduceMotion ? 0 : 24 * (1 - f)),
+                child: child,
+              ),
+            ),
           ),
         );
       },
@@ -473,6 +744,10 @@ class _PickerList extends StatefulWidget {
     required this.rowHeight,
     required this.fullPage,
     required this.animation,
+    required this.scroll,
+    required this.closingIndex,
+    required this.panelOpacity,
+    required this.onSelected,
   });
   final String label;
   final List<String> options;
@@ -480,72 +755,190 @@ class _PickerList extends StatefulWidget {
   final double rowHeight;
   final bool fullPage;
   final Animation<double> animation;
+  final ScrollController scroll;
+  final int? Function() closingIndex;
+  final double Function() panelOpacity;
+  final ValueChanged<int> onSelected;
   @override
   State<_PickerList> createState() => _PickerListState();
 }
 
 class _PickerListState extends State<_PickerList> {
-  late final _scroll = ScrollController(
-    initialScrollOffset: widget.fullPage
-        ? widget.selected * widget.rowHeight
-        : 0,
-  );
+  final _focus = FocusNode();
+  late int _candidate = widget.selected;
+  bool _keyboard = false;
   @override
   void dispose() {
-    _scroll.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
+  KeyEventResult _key(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape) {
+      Navigator.pop(context);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.space) {
+      widget.onSelected(_candidate);
+      return KeyEventResult.handled;
+    }
+    int? next;
+    if (key == LogicalKeyboardKey.arrowUp ||
+        key == LogicalKeyboardKey.arrowLeft) {
+      next = _candidate - 1;
+    }
+    if (key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.arrowRight) {
+      next = _candidate + 1;
+    }
+    if (key == LogicalKeyboardKey.home) next = 0;
+    if (key == LogicalKeyboardKey.end) next = widget.options.length - 1;
+    if (next == null) return KeyEventResult.ignored;
+    setState(() {
+      _candidate = next!.clamp(0, widget.options.length - 1);
+      _keyboard = true;
+    });
+    _focus.requestFocus();
+    if (widget.scroll.hasClients) {
+      final top = _candidate * widget.rowHeight + (widget.fullPage ? 16 : 0);
+      final bottom = top + widget.rowHeight;
+      final position = widget.scroll.position;
+      final target =
+          (top < position.pixels
+                  ? top
+                  : bottom > position.pixels + position.viewportDimension
+                  ? bottom - position.viewportDimension
+                  : position.pixels)
+              .clamp(0.0, position.maxScrollExtent);
+      widget.scroll.jumpTo(target);
+    }
+    return KeyEventResult.handled;
+  }
+
   @override
-  Widget build(BuildContext context) => ListView.builder(
-    controller: _scroll,
-    padding: EdgeInsets.symmetric(
-      horizontal: widget.fullPage ? 24 : 0,
-      vertical: widget.fullPage ? 16 : 0,
-    ),
-    itemCount: widget.options.length,
-    itemBuilder: (c, i) => AnimatedBuilder(
-      animation: widget.animation,
-      builder: (c, _) {
-        final f =
-            !widget.fullPage ||
-                c.brockmann.motionReduced(c) ||
-                widget.animation.status == AnimationStatus.reverse
-            ? 1.0
-            : brockmannOutExpo.transform(
-                ((widget.animation.value * .44 - math.min(i, 7) * .03) / .22)
-                    .clamp(0, 1),
-              );
-        return Opacity(
-          opacity: f,
-          child: Transform.translate(
-            offset: Offset(-40 * (1 - f), 0),
-            child: BrockmannPressable(
-              label: widget.options[i],
-              selected: i == widget.selected,
-              onPressed: () => Navigator.pop(context, i),
-              builder: (c, p) => Container(
-                constraints: BoxConstraints(minHeight: widget.rowHeight),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                color: p ? c.brockmann.line.withValues(alpha: .3) : null,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: BrockmannText(
-                    widget.options[i],
-                    role: BrockmannType.value,
-                    color: i == widget.selected
-                        ? c.brockmann.accentText
-                        : c.brockmann.foreground,
+  Widget build(BuildContext context) => Focus(
+    focusNode: _focus,
+    autofocus: true,
+    onKeyEvent: _key,
+    child: LayoutBuilder(
+      builder: (c, bounds) => Stack(
+        children: [
+          ListView.builder(
+            controller: widget.scroll,
+            itemExtent: widget.rowHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.fullPage ? 24 : 0,
+              vertical: widget.fullPage ? 16 : 0,
+            ),
+            itemCount: widget.options.length,
+            itemBuilder: (c, i) => AnimatedBuilder(
+              animation: widget.animation,
+              builder: (c, _) {
+                final closing =
+                    widget.animation.status == AnimationStatus.reverse;
+                final f =
+                    !widget.fullPage || c.brockmann.motionReduced(c) || closing
+                    ? 1.0
+                    : brockmannOutExpo.transform(
+                        ((widget.animation.value * .44 - math.min(i, 7) * .03) /
+                                .22)
+                            .clamp(0, 1),
+                      );
+                final hidden =
+                    !widget.fullPage && closing && widget.closingIndex() == i;
+                return Opacity(
+                  opacity: hidden
+                      ? 0
+                      : widget.fullPage
+                      ? f
+                      : !closing && i == widget.selected
+                      ? 1
+                      : widget.panelOpacity(),
+                  child: Transform.translate(
+                    offset: Offset(-40 * (1 - f), 0),
+                    child: MouseRegion(
+                      onEnter: (_) {
+                        if (_candidate != i || _keyboard) {
+                          setState(() {
+                            _candidate = i;
+                            _keyboard = false;
+                          });
+                        }
+                      },
+                      child: BrockmannPressable(
+                        label: widget.options[i],
+                        selected: i == widget.selected,
+                        onPressed: () => widget.onSelected(i),
+                        builder: (c, pressed) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          color: pressed
+                              ? c.brockmann.line.withValues(alpha: .3)
+                              : null,
+                          alignment: Alignment.centerLeft,
+                          child: BrockmannText(
+                            widget.options[i],
+                            role: widget.fullPage
+                                ? BrockmannType.heading
+                                : BrockmannType.value,
+                            color: i == widget.selected
+                                ? c.brockmann.accentText
+                                : c.brockmann.foreground,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          IgnorePointer(
+            child: Opacity(
+              opacity: _keyboard ? 1 : 0,
+              child: BrockmannMotion(
+                immediate: !_keyboard,
+                value: _candidate.toDouble(),
+                milliseconds: 140,
+                builder: (c, position) => AnimatedBuilder(
+                  animation: widget.scroll,
+                  builder: (c, _) => Stack(
+                    children: [
+                      Positioned(
+                        left: widget.fullPage ? 28 : 4,
+                        right: widget.fullPage ? 28 : 4,
+                        top:
+                            position * widget.rowHeight -
+                            (widget.scroll.hasClients
+                                ? widget.scroll.offset
+                                : 0) +
+                            (widget.fullPage ? 16 : 0) +
+                            4,
+                        height: widget.rowHeight - 8,
+                        child: DecoratedBox(
+                          key: const ValueKey('brockmann-picker-focus'),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: c.brockmann.accent,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
-        );
-      },
+        ],
+      ),
     ),
   );
 }

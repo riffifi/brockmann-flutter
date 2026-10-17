@@ -8,3 +8,6 @@
 - Optional preloaded Android sound, quiet original cues, lifecycle handling and local showcase preferences.
 
 - Independent Android haptic modes, double/triple outcome rhythms, lifecycle cancellation and reorder pickup/landing feedback.
+
+- Anchored wide dropdown text handoff, smooth early cancellation, overflowing choices and animated keyboard candidates.
+- Stable interrupted page exits with cached page paint; expanded regression coverage and Pixel profile validation.
