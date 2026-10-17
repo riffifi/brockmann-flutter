@@ -175,6 +175,7 @@ enum BrockmannType {
       pixelTriangle => ('Geist Pixel Triangle', 64.0, 72.0, 400.0, 0.0),
     };
     return TextStyle(
+      decoration: TextDecoration.none,
       fontFamily: family,
       package: 'brockmann',
       fontSize: size,

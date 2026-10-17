@@ -63,23 +63,27 @@ class _FlatDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.brockmann;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          24,
-          24,
-          24 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Material(
-              color: t.surface,
-              shape: Border.all(color: t.line, width: 0),
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Center(
+        child: Material(
+          color: t.surface,
+          shape: Border.symmetric(
+            horizontal: BorderSide(color: t.line, width: 0),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: SafeArea(
+              top: false,
+              bottom: false,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child: child,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: child,
+                  ),
+                ),
               ),
             ),
           ),

@@ -11,3 +11,4 @@
 
 - Anchored wide dropdown text handoff, smooth early cancellation, overflowing choices and animated keyboard candidates.
 - Stable interrupted page exits with cached page paint; expanded regression coverage and Pixel profile validation.
+- Edge-to-edge overlay bands with inset readable content; explicit text decoration prevents Flutter fallback yellow underlines.

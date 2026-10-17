@@ -24,7 +24,7 @@ Rapid page changes preserve each outgoing page’s current position and give it 
 
 `BrockmannPicker` opens a full selection page on phones, with the current item visible. Android Back or the visible close action cancels. A tap commits once and closes with a short fade/translation. On wider screens the bordered list is anchored around the selected row and clamped to the safe viewport. Enlarged text switches back to the full-page presentation. Closed controls have 16 dp of internal inset, separating the hover/press outline, label and value. The wide list reveals over 220 ms and closes over 200 ms, carrying a single selected label into its live field position even when the new value wraps. Early cancellation closes from the current geometry. Arrow keys, Home and End move the candidate with a 140 ms outline glide; Enter or Space commits, and Escape cancels. Candidate navigation never changes the model until commitment.
 
-Dialog, menu and command helpers return the chosen string, or null on cancellation. Act on the returned result after checking `context.mounted`. Use confirmations only when they help the user make a real decision. Toasts are brief status messages; meaningful failures also need persistent visible text.
+Dialog, menu and command surfaces extend edge to edge as flat bands; their content stays inset and is limited to 560 dp for readability. Horizontal system cutouts inset content without shrinking the surface. Dialog, menu and command helpers return the chosen string, or null on cancellation. Act on the returned result after checking `context.mounted`. Use confirmations only when they help the user make a real decision. Toasts are brief status messages; meaningful failures also need persistent visible text.
 
 ## Colour schemes
 
