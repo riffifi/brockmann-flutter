@@ -39,7 +39,7 @@ BrockmannColorPicker(
 )
 ```
 
-Grid is the mobile default. `swatches` gives a larger scrolling strip; `ribbon` preserves the dense Windows 8 composition with tinted columns, small colour samples, and opposing hollow triangles. Set `axis: Axis.vertical` for a vertical strip and `verticalExtent` to constrain its scrolling viewport. The dense ribbon is best for deliberate comparison; use the grid for comfortable finger selection.
+Grid is the mobile default. `swatches` gives a larger scrolling strip; `ribbon` scales the Windows 8 composition for mobile: 48 dp columns, a 40 dp tinted band, larger colour samples and opposing hollow triangles. Set `axis: Axis.vertical` for a vertical strip and `verticalExtent` to constrain its scrolling viewport. The horizontal ribbon occupies 176 dp including companions and markers. Both axes scroll while retaining 48 dp colour targets; use the grid when all colours should be visible together.
 
 Schemes have a primary and up to three companion colours. Companions describe the selected palette; they do not automatically recolour the whole interface. Apply the selected primary to the app theme explicitly. Supply your own named schemes for a curated palette. Selection moves smoothly, remains visible, and includes a text name and hexadecimal value so colour alone never communicates selection.
 

@@ -5,7 +5,7 @@ Validated on 17 October 2026 with Flutter 3.47.4 / Dart 3.13.3.
 ## Local checks
 
 - `flutter analyze`: no issues.
-- `flutter test` in the library: 23 passing tests.
+- `flutter test` in the library: 24 passing tests.
 - `flutter test` in the showcase: nine passing tests. Each catalogue page is sampled through intermediate animation frames at 320 and 412 dp, text scale 1 and 2, in both themes. A separate check verifies that editing survives navigation away and back.
 - Android arm64 profile APK builds successfully with the native SoundPool and Activity-aware haptic plugin.
 

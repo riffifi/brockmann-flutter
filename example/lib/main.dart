@@ -190,24 +190,27 @@ class _CatalogueState extends State<Catalogue> {
   @override
   Widget build(BuildContext context) {
     final header = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+      padding: const EdgeInsets.only(top: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: BrockmannText(
-                  'BROCKMANN / COMPONENT LIBRARY',
-                  role: BrockmannType.label,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: BrockmannText(
+                    'BROCKMANN / COMPONENT LIBRARY',
+                    role: BrockmannType.label,
+                  ),
                 ),
-              ),
-              BrockmannButton(
-                label: widget.light ? 'dark' : 'light',
-                style: BrockmannButtonStyle.text,
-                onPressed: widget.onLight,
-              ),
-            ],
+                BrockmannButton(
+                  label: widget.light ? 'dark' : 'light',
+                  style: BrockmannButtonStyle.text,
+                  onPressed: widget.onLight,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           BrockmannPivot(

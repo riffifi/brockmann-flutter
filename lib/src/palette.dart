@@ -76,7 +76,7 @@ List<BrockmannColorScheme> windows8Palette() {
       .toList(growable: false);
 }
 
-/// A touch-sized grid by default. The dense ribbon is an explicit legacy variant.
+/// Touch-sized colour schemes, including a scaled Windows 8 ribbon.
 class BrockmannColorPicker extends StatefulWidget {
   const BrockmannColorPicker({
     super.key,
@@ -123,7 +123,7 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
   }
 
   double get _step =>
-      widget.variant == BrockmannPaletteVariant.ribbon ? 24 : 56;
+      widget.variant == BrockmannPaletteVariant.ribbon ? 48 : 56;
   void _reveal() {
     if (!mounted ||
         widget.variant == BrockmannPaletteVariant.grid ||
@@ -213,6 +213,8 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
               final columns = grid
                   ? math.max(1, (b.maxWidth / 56).floor())
                   : widget.schemes.length;
+              final ribbon = widget.variant == BrockmannPaletteVariant.ribbon;
+              final crossExtent = ribbon ? 176.0 : 88.0;
               final size = grid
                   ? Size(
                       columns * 56,
@@ -220,10 +222,10 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
                     )
                   : vertical
                   ? Size(
-                      math.min(b.maxWidth, 144),
+                      math.min(b.maxWidth, ribbon ? 288 : 144),
                       widget.schemes.length * _step,
                     )
-                  : Size(widget.schemes.length * _step, 88);
+                  : Size(widget.schemes.length * _step, crossExtent);
               final visual = BrockmannMotion(
                 value: _selected.toDouble(),
                 milliseconds: 180,
@@ -260,7 +262,7 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
                         : Row(
                             children: [
                               for (var i = 0; i < widget.schemes.length; i++)
-                                _cell(i, Size(_step, 88)),
+                                _cell(i, Size(_step, crossExtent)),
                             ],
                           ),
                   ),
@@ -269,7 +271,7 @@ class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
               return grid
                   ? Align(alignment: Alignment.centerLeft, child: visual)
                   : SizedBox(
-                      height: vertical ? widget.verticalExtent : 88,
+                      height: vertical ? widget.verticalExtent : crossExtent,
                       child: SingleChildScrollView(
                         controller: _scroll,
                         scrollDirection: widget.axis,
@@ -303,6 +305,16 @@ class _PalettePainter extends CustomPainter {
   Color muted(Color c) => enabled ? c : Color.lerp(c, theme.background, .65)!;
   @override
   void paint(Canvas c, Size size) {
+    c.save();
+    if (variant == BrockmannPaletteVariant.ribbon) {
+      c.scale(2);
+      size = Size(size.width / 2, size.height / 2);
+    }
+    _paint(c, size);
+    c.restore();
+  }
+
+  void _paint(Canvas c, Size size) {
     final ribbon = variant == BrockmannPaletteVariant.ribbon,
         grid = variant == BrockmannPaletteVariant.grid;
     final step = ribbon ? 24.0 : 56.0;
