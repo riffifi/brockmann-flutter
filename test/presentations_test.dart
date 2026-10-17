@@ -52,6 +52,14 @@ void main() {
     expect(await backEvent(tester, 'startBackGesture'), true);
     await backEvent(tester, 'updateBackGestureProgress', .5);
     await tester.pump();
+    expect(
+      tester
+          .widget<Opacity>(
+            find.byKey(const ValueKey('brockmann-full-picker-fade')),
+          )
+          .opacity,
+      closeTo(.5, .001),
+    );
     await backEvent(tester, 'cancelBackGesture');
     await tester.pumpAndSettle();
     expect(find.text('destination'), findsOneWidget);

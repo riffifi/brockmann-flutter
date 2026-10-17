@@ -661,19 +661,21 @@ class _PickerRoute extends PageRoute<int> {
   @override
   Duration get transitionDuration => Duration(
     milliseconds:
-        (theme.reduceMotion ? 100 : (fullPage ? 440 : 220) * theme.motionScale)
+        (theme.reduceMotion ? 100 : (fullPage ? 480 : 220) * theme.motionScale)
             .round(),
   );
   @override
   Duration get reverseTransitionDuration => Duration(
-    milliseconds: (theme.reduceMotion ? 100 : 200 * theme.motionScale).round(),
+    milliseconds:
+        (theme.reduceMotion ? 100 : (fullPage ? 260 : 200) * theme.motionScale)
+            .round(),
   );
   @override
   bool didPop(int? result) {
     _closing = true;
     _surface.close(result);
     final popped = super.didPop(result);
-    if (popped && !fullPage) {
+    if (popped) {
       controller?.animateBack(0, duration: reverseTransitionDuration);
     }
     return popped;
@@ -708,17 +710,96 @@ class _PickerRoute extends PageRoute<int> {
         ),
       );
     }
-    if (theme.reduceMotion) {
-      return FadeTransition(opacity: animation, child: child);
-    }
-    return const PredictiveBackPageTransitionsBuilder().buildTransitions(
-      this,
-      context,
-      animation,
-      secondaryAnimation,
-      child,
-    );
+    return _FullPickerTransition(route: this, child: child);
   }
+}
+
+/// The picker keeps Metro feather motion while forwarding Android's predictive
+/// Back events to the route's own gesture controller.
+class _FullPickerTransition extends StatefulWidget {
+  const _FullPickerTransition({required this.route, required this.child});
+  final _PickerRoute route;
+  final Widget child;
+  @override
+  State<_FullPickerTransition> createState() => _FullPickerTransitionState();
+}
+
+class _FullPickerTransitionState extends State<_FullPickerTransition>
+    with WidgetsBindingObserver {
+  bool _gesture = false;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.route.animation!.addStatusListener(_status);
+  }
+
+  void _status(AnimationStatus status) {
+    if (status == AnimationStatus.completed && _gesture) {
+      widget.route._surface.gesturePreview = false;
+      setState(() => _gesture = false);
+    }
+  }
+
+  @override
+  bool handleStartBackGesture(PredictiveBackEvent event) {
+    final route = widget.route;
+    if (event.isButtonEvent || !route.isCurrent || !route.popGestureEnabled) {
+      return false;
+    }
+    setState(() => _gesture = true);
+    route._surface.gesturePreview = true;
+    route.handleStartBackGesture(progress: 1 - event.progress);
+    return true;
+  }
+
+  @override
+  void handleUpdateBackGestureProgress(PredictiveBackEvent event) => widget
+      .route
+      .handleUpdateBackGestureProgress(progress: 1 - event.progress);
+  @override
+  void handleCancelBackGesture() => widget.route.handleCancelBackGesture();
+  @override
+  void handleCommitBackGesture() => widget.route.handleCommitBackGesture();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.route.animation!.removeStatusListener(_status);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: widget.route.animation!,
+    child: widget.child,
+    builder: (c, child) {
+      final route = widget.route;
+      final surface = route._surface;
+      final value = route.animation!.value;
+      final exit = surface._fullExitStart;
+      final opacity = _gesture
+          ? value
+          : exit == null
+          ? route.theme.reduceMotion
+                ? value
+                : Curves.easeOutCubic.transform((value * .48 / .20).clamp(0, 1))
+          : surface._fullExitOpacity *
+                Curves.easeInOutCubic.transform(
+                  (value / math.max(.000001, exit)).clamp(0, 1),
+                );
+      return IgnorePointer(
+        ignoring: route._closing || _gesture,
+        child: ExcludeFocus(
+          excluding: route._closing,
+          child: Opacity(
+            key: const ValueKey('brockmann-full-picker-fade'),
+            opacity: opacity,
+            child: child,
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _PickerSurface {
@@ -746,6 +827,9 @@ class _PickerSurface {
   final VoidCallback onCancel;
   final Animation<double> animation;
   int? previewCandidate;
+  bool gesturePreview = false;
+  double? _fullExitStart;
+  double _fullExitOpacity = 1;
   ScrollController? _scroll;
   double _initialOffset = 0;
   bool _closing = false;
@@ -783,6 +867,14 @@ class _PickerSurface {
 
   void close(int? result) {
     _closing = true;
+    if (fullPage) {
+      _fullExitStart = animation.value;
+      _fullExitOpacity = theme.reduceMotion
+          ? animation.value
+          : Curves.easeOutCubic.transform(
+              (animation.value * .48 / .20).clamp(0, 1),
+            );
+    }
     final g = _geometry;
     if (g != null && !fullPage) {
       final chosen = result ?? selected;
@@ -865,6 +957,8 @@ class _PickerSurface {
       closingIndex: () => _exit?.index,
       panelOpacity: () => _opacity,
       previewCandidate: previewCandidate,
+      exitStart: () => _fullExitStart,
+      gesturePreview: () => gesturePreview,
       onSelected: (index) {
         if (_closing) return;
         onSelected(index);
@@ -1015,8 +1109,12 @@ class _PickerList extends StatefulWidget {
     required this.panelOpacity,
     required this.onSelected,
     this.previewCandidate,
+    required this.exitStart,
+    required this.gesturePreview,
   });
   final int? previewCandidate;
+  final double? Function() exitStart;
+  final bool Function() gesturePreview;
   final String label;
   final List<String> options;
   final int selected;
@@ -1108,14 +1206,29 @@ class _PickerListState extends State<_PickerList> {
               builder: (c, _) {
                 final closing =
                     widget.animation.status == AnimationStatus.reverse;
-                final f =
-                    !widget.fullPage || c.brockmann.motionReduced(c) || closing
+                final reduced = c.brockmann.motionReduced(c);
+                final exit = widget.exitStart();
+                final preview = widget.gesturePreview();
+                final first = widget.scroll.hasClients
+                    ? (widget.scroll.offset / widget.rowHeight).floor()
+                    : widget.selected;
+                final stagger = (i - first).clamp(0, 6) * .03;
+                final entry = exit ?? widget.animation.value;
+                final f = !widget.fullPage || reduced || preview
                     ? 1.0
-                    : brockmannOutExpo.transform(
-                        ((widget.animation.value * .44 - math.min(i, 7) * .03) /
-                                .22)
-                            .clamp(0, 1),
+                    : Curves.easeOutCubic.transform(
+                        ((entry * .48 - stagger) / .30).clamp(0, 1),
                       );
+                final retreat =
+                    widget.fullPage && !reduced && exit != null && !preview
+                    ? 12 *
+                          (1 -
+                              Curves.easeInOutCubic.transform(
+                                (widget.animation.value /
+                                        math.max(.000001, exit))
+                                    .clamp(0, 1),
+                              ))
+                    : 0.0;
                 final hidden =
                     !widget.fullPage && closing && widget.closingIndex() == i;
                 return Opacity(
@@ -1127,7 +1240,10 @@ class _PickerListState extends State<_PickerList> {
                       ? 1
                       : widget.panelOpacity(),
                   child: Transform.translate(
-                    offset: Offset(-40 * (1 - f), 0),
+                    offset: Offset(
+                      -(widget.fullPage ? 24 : 40) * (1 - f) + retreat,
+                      0,
+                    ),
                     child: MouseRegion(
                       onEnter: (_) {
                         if (_candidate != i || _keyboard) {

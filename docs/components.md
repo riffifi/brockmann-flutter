@@ -98,3 +98,9 @@ wrap only its painted surface with `BrockmannReorderableItem`, inside any outer
 padding. Pickup and release each emit one native haptic; intermediate movement
 stays quiet. TalkBack’s Move earlier/later commits emit one landing tick.
 Haptic mute and system preferences apply, independently of sound.
+
+Full-page picker motion uses a coordinated 200 ms surface fade and 300 ms row
+feather with 30 ms stagger, capped at 480 ms for the visible viewport. Closing
+takes 260 ms and preserves current row opacity/position before retreating.
+Android predictive Back drives the route progress directly and restores it on
+cancellation; reduced motion uses a short fade.
