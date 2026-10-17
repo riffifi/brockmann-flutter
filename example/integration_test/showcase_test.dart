@@ -103,6 +103,35 @@ void main() {
             .selected,
         3,
       );
+      final quick = await tester.startGesture(tester.getCenter(anchored));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 240));
+      final quickOption = find.descendant(
+        of: find.byType(ListView),
+        matching: find.text('library'),
+      );
+      await quick.moveTo(tester.getCenter(quickOption));
+      await tester.pump(const Duration(milliseconds: 160));
+      expect(tester.widget<BrockmannPicker>(anchored).selected, 3);
+      await quick.up();
+      await tester.pumpAndSettle();
+      expect(tester.widget<BrockmannPicker>(anchored).selected, 1);
+      final actions = find.byWidgetPredicate(
+        (w) => w is BrockmannButton && w.label == 'action sheet',
+      );
+      await tester.ensureVisible(actions);
+      await tester.tap(actions);
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      final sheetTitle = tester.widget<BrockmannText>(
+        find.ancestor(
+          of: find.text('Session actions'),
+          matching: find.byType(BrockmannText),
+        ),
+      );
+      expect(sheetTitle.role, BrockmannType.label);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       final dateButton = find.byWidgetPredicate(
         (w) => w is BrockmannButton && w.label.startsWith('date /'),
       );

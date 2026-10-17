@@ -34,7 +34,7 @@ Programmatic updates stay silent.
 
 Anchored choices support both tap-to-open and a shortcut: hold the field, drag
 through options, and lift to choose. Hovering near the panel’s upper/lower edge
-scrolls long lists. The model changes only on release inside the panel; releasing
+scrolls long lists. Both tap and hold use the same anchored panel renderer: row measurements, 220 ms reveal, 200 ms closing label carry, surface, text roles and insets. Gesture preview uses its existing animated outline, with no filled accent row or alternate type scale. The model changes only on release inside the panel; releasing
 outside, cancelling the pointer, or pressing Back abandons the draft. Full-page
 choices retain their normal tap and keyboard interaction.
 
@@ -43,7 +43,7 @@ choices retain their normal tap and keyboard interaction.
 `showBrockmannContextMenu`, `BrockmannContextMenu`, and `BrockmannOverflowMenu`
 all use the existing bottom action sheet. The legacy `position` argument remains
 accepted for source compatibility; it no longer positions a floating menu.
-Options use heading typography, wrap when needed, and retain disabled and
+The context title uses the secondary label style. Actions use light 24 dp heading typography in rows at least 64 dp tall, with a shared 24 dp text inset. This keeps the menu readable without treating every row and the context label as equal headings. Options wrap when needed and retain disabled and
 destructive states. Sheets scroll and respect system insets.
 
 This bottom-sheet presentation and the hold-and-drag choice shortcut are explicit

@@ -274,6 +274,7 @@ class BrockmannContextMenu<T> extends StatelessWidget {
   }
 }
 
+/// A typographic command band: a quiet context label above generous actions.
 Future<T?> showBrockmannActionSheet<T>(
   BuildContext context, {
   required String title,
@@ -285,6 +286,12 @@ Future<T?> showBrockmannActionSheet<T>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
+    showDragHandle: false,
+    constraints: const BoxConstraints(maxWidth: double.infinity),
+    sheetAnimationStyle: AnimationStyle(
+      duration: t.duration(context, 220),
+      reverseDuration: t.duration(context, 200),
+    ),
     backgroundColor: t.surface,
     elevation: 0,
     shape: Border(top: BorderSide(color: t.line)),
@@ -293,46 +300,70 @@ Future<T?> showBrockmannActionSheet<T>(
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              BrockmannText(title, role: BrockmannType.heading),
-              const SizedBox(height: 16),
-              for (final entry in entries)
-                BrockmannPressable(
-                  label: entry.label,
-                  onPressed: entry.enabled
-                      ? () => Navigator.pop(c, entry.value)
-                      : null,
-                  builder: (c, p) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      children: [
-                        if (entry.icon != null && showIcons) ...[
-                          BrockmannGlyph(
-                            entry.icon!,
-                            color: entry.destructive ? t.danger : t.secondary,
-                          ),
-                          const SizedBox(width: 16),
-                        ],
-                        Expanded(
-                          child: BrockmannText(
-                            entry.label,
-                            role: BrockmannType.heading,
-                            color: !entry.enabled
-                                ? t.disabled
-                                : entry.destructive
-                                ? t.danger
-                                : t.foreground,
-                          ),
-                        ),
-                      ],
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                    child: BrockmannText(
+                      title,
+                      role: BrockmannType.label,
+                      color: t.secondary,
                     ),
                   ),
-                ),
-            ],
+                  for (final entry in entries)
+                    BrockmannPressable(
+                      label: entry.label,
+                      onPressed: entry.enabled
+                          ? () => Navigator.pop(c, entry.value)
+                          : null,
+                      builder: (c, pressed) => AnimatedContainer(
+                        duration: t.duration(c, pressed ? 60 : 160),
+                        constraints: const BoxConstraints(minHeight: 64),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        color: pressed
+                            ? t.line.withValues(alpha: .3)
+                            : Colors.transparent,
+                        child: Row(
+                          children: [
+                            if (entry.icon != null && showIcons) ...[
+                              BrockmannGlyph(
+                                entry.icon!,
+                                color: !entry.enabled
+                                    ? t.disabled
+                                    : entry.destructive
+                                    ? t.danger
+                                    : t.secondary,
+                              ),
+                              const SizedBox(width: 16),
+                            ],
+                            Expanded(
+                              child: BrockmannText(
+                                entry.label,
+                                role: BrockmannType.heading,
+                                weight: 300,
+                                color: !entry.enabled
+                                    ? t.disabled
+                                    : entry.destructive
+                                    ? t.danger
+                                    : t.foreground,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

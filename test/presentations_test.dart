@@ -140,6 +140,24 @@ void main() {
       await tester.longPress(find.text('Hold'));
       await tester.pumpAndSettle();
       expect(find.byType(BottomSheet), findsOneWidget);
+      final contextLabel = tester.widget<BrockmannText>(
+        find.ancestor(
+          of: find.text('actions'),
+          matching: find.byType(BrockmannText),
+        ),
+      );
+      expect(contextLabel.role, BrockmannType.label);
+      final actionLabel = tester.widget<BrockmannText>(
+        find.ancestor(
+          of: find.text('Copy'),
+          matching: find.byType(BrockmannText),
+        ),
+      );
+      expect(actionLabel.weight, 300);
+      expect(
+        tester.getSize(find.byType(BottomSheet)).width,
+        tester.view.physicalSize.width / tester.view.devicePixelRatio,
+      );
       expect(find.byType(PopupMenuItem<String>), findsNothing);
       expect(
         tester

@@ -35,7 +35,7 @@ const actions = [
 
 `BrockmannContextMenu<T>` wraps a child and opens on hold or secondary click; it delivers the selected value through `onSelected`. Its child should offer a visible alternate action for users who cannot discover long press. `showBrockmannContextMenu` retains its global `position` argument for compatibility; all context actions now open the bottom action sheet. Disabled entries never return a result.
 
-`showBrockmannActionSheet(context, title: ..., entries: actions)` presents actions in the same bottom sheet with 24 dp heading labels, wrapping and safe-area protection. Both menu helpers return null on cancellation. A supplied entry icon is rendered beside its visible label; entries without icons stay text-only. Use familiar, simple command symbols deliberately, without inventing a pictogram for every row. `showIcons: false` provides a wholly textual presentation. Marking an action destructive only changes its presentation; your application performs the action and decides whether confirmation is necessary.
+`showBrockmannActionSheet(context, title: ..., entries: actions)` presents actions in the same bottom sheet with a quiet context label, light 24 dp action text, rows at least 64 dp tall, wrapping and safe-area protection. Both menu helpers return null on cancellation. A supplied entry icon is rendered beside its visible label; entries without icons stay text-only. Use familiar, simple command symbols deliberately, without inventing a pictogram for every row. `showIcons: false` provides a wholly textual presentation. Marking an action destructive only changes its presentation; your application performs the action and decides whether confirmation is necessary.
 
 ## Composition
 
@@ -77,4 +77,4 @@ The showcase includes separate adaptive icon foreground/background layers and An
 
 Boundary stretch uses the actual scroll axis and direction, so top/bottom and left/right remain consistent for reversed lists. Retain the application scroll behavior when constructing custom scroll views. Use a live meter for signal levels and `BrockmannProgress` for work progress; a vertical meter stays 4 dp wide even inside a stretched layout.
 
-Anchored pickers support hold-and-drag selection, edge auto-scrolling, release-to-commit and outside/Back cancellation. Date selections and settled time-wheel changes emit restrained haptic-only detents. See [Metro guidance](metro-audit.md).
+Anchored pickers share the same renderer and reveal/closing label animations for tapping and holding. They support hold-and-drag selection, edge auto-scrolling, release-to-commit and outside/Back cancellation. Date selections and settled time-wheel changes emit restrained haptic-only detents. See [Metro guidance](metro-audit.md).

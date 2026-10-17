@@ -256,7 +256,8 @@ class BrockmannPicker extends StatefulWidget {
   State<BrockmannPicker> createState() => _BrockmannPickerState();
 }
 
-class _BrockmannPickerState extends State<BrockmannPicker> {
+class _BrockmannPickerState extends State<BrockmannPicker>
+    with SingleTickerProviderStateMixin {
   final _fieldKey = GlobalKey(), _valueKey = GlobalKey();
   bool _handoff = false, _open = false, _hover = false;
   int get selected => widget.options.isEmpty
@@ -265,10 +266,9 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
   OverlayEntry? _quick;
   LocalHistoryEntry? _history;
   Timer? _edgeTimer;
-  final _quickScroll = ScrollController();
-  Rect _quickPanel = Rect.zero;
-  double _quickRow = 64;
-  int? _candidate;
+  _PickerSurface? _quickSurface;
+  late final _quickMotion = AnimationController(vsync: this);
+  bool _quickClosing = false;
   Offset _finger = Offset.zero;
   bool get _anchored =>
       widget.presentation == BrockmannPickerPresentation.anchored ||
@@ -284,31 +284,24 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
       return;
     }
     final box = _fieldKey.currentContext!.findRenderObject() as RenderBox;
-    final overlayBox =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-    final origin = overlayBox.globalToLocal(box.localToGlobal(Offset.zero));
-    final media = MediaQuery.of(context);
-    _quickRow = math.max(64, media.textScaler.scale(24) * 1.4 + 24);
-    final height = math.min(
-      _quickRow * widget.options.length,
-      overlayBox.size.height - media.padding.vertical - 32,
+    final value = _valueBounds()!;
+    final t = context.brockmann;
+    _quickClosing = false;
+    _quickMotion.duration = t.duration(context, 220);
+    _quickMotion.reverseDuration = t.duration(context, 200);
+    _quickSurface = _PickerSurface(
+      label: widget.label,
+      options: List.of(widget.options),
+      selected: selected,
+      anchor: box.localToGlobal(Offset.zero) & box.size,
+      closedValue: value,
+      liveValue: _valueBounds,
+      fullPage: false,
+      theme: t.copyWith(reduceMotion: t.motionReduced(context)),
+      animation: _quickMotion,
+      onCancel: () => _quickEnd(false),
+      onSelected: (_) {},
     );
-    _quickPanel = Rect.fromLTWH(
-      origin.dx.clamp(
-        16,
-        math.max(16, overlayBox.size.width - box.size.width - 16),
-      ),
-      (origin.dy - selected * _quickRow).clamp(
-        media.padding.top + 16,
-        math.max(
-          media.padding.top + 16,
-          overlayBox.size.height - media.padding.bottom - height - 16,
-        ),
-      ),
-      math.min(box.size.width, overlayBox.size.width - 32),
-      height,
-    );
-    _candidate = selected;
     _open = true;
     _history = LocalHistoryEntry(
       onRemove: () {
@@ -318,69 +311,52 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
     );
     ModalRoute.of(context)?.addLocalHistoryEntry(_history!);
     _quick = OverlayEntry(
-      builder: (c) {
-        final t = context.brockmann;
-        return Positioned.fromRect(
-          rect: _quickPanel,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: t.duration(c, 160),
-            builder: (c, value, child) => Opacity(opacity: value, child: child),
-            child: Material(
-              color: t.surface,
-              shape: Border.all(color: t.lineStrong),
-              child: ListView.builder(
-                controller: _quickScroll,
-                padding: EdgeInsets.zero,
-                itemExtent: _quickRow,
-                itemCount: widget.options.length,
-                itemBuilder: (c, i) => AnimatedContainer(
-                  duration: t.duration(c, 100),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: AlignmentDirectional.centerStart,
-                  color: i == _candidate ? t.accent : t.surface,
-                  child: BrockmannText(
-                    widget.options[i],
-                    role: BrockmannType.heading,
-                    color: i == _candidate
-                        ? (t.accent.computeLuminance() > .45
-                              ? Colors.black
-                              : Colors.white)
-                        : t.foreground,
-                  ),
-                ),
+      builder: (c) => AnimatedBuilder(
+        animation: _quickMotion,
+        builder: (c, _) => Stack(
+          children: [
+            ModalBarrier(
+              color: Colors.black.withValues(
+                alpha:
+                    (t.light ? .4 : .6) *
+                    Curves.ease.transform(_quickMotion.value),
               ),
+              dismissible: false,
             ),
-          ),
-        );
-      },
+            IgnorePointer(child: _quickSurface!.build(c)),
+          ],
+        ),
+      ),
     );
     Overlay.of(context).insert(_quick!);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_quick == null || !_quickScroll.hasClients) return;
-      _quickScroll.jumpTo(
-        (selected * _quickRow - (origin.dy - _quickPanel.top)).clamp(
-          0,
-          _quickScroll.position.maxScrollExtent,
-        ),
-      );
-      _quickMove(d.globalPosition);
-    });
+    setState(() {});
+    _quickMotion.forward(from: 0);
+    BrockmannFeedbackScope.of(context)?.play(BrockmannSound.open);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _quickMove(d.globalPosition),
+    );
     _edgeTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
-      if (!_quickScroll.hasClients || _quick == null) return;
-      final y = _finger.dy;
-      final direction = y < _quickPanel.top + 36
+      final surface = _quickSurface;
+      final scroll = surface?._scroll;
+      final panel = surface?._geometry?.panel;
+      if (_quickClosing ||
+          panel == null ||
+          scroll == null ||
+          !scroll.hasClients) {
+        return;
+      }
+      final direction = _finger.dy < panel.top + 36
           ? -1
-          : y > _quickPanel.bottom - 36
+          : _finger.dy > panel.bottom - 36
           ? 1
           : 0;
       if (direction != 0 &&
-          _finger.dx >= _quickPanel.left &&
-          _finger.dx <= _quickPanel.right) {
-        _quickScroll.jumpTo(
-          (_quickScroll.offset + direction * 5).clamp(
+          _finger.dx >= panel.left &&
+          _finger.dx <= panel.right) {
+        scroll.jumpTo(
+          (scroll.offset + direction * 5).clamp(
             0,
-            _quickScroll.position.maxScrollExtent,
+            scroll.position.maxScrollExtent,
           ),
         );
         _updateCandidate();
@@ -389,45 +365,71 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
   }
 
   void _quickMove(Offset global) {
-    if (_quick == null) return;
-    final box = Overlay.of(context).context.findRenderObject() as RenderBox;
-    _finger = box.globalToLocal(global);
+    if (_quick == null || _quickClosing) return;
+    _finger = global;
     _updateCandidate();
   }
 
   void _updateCandidate() {
-    final next = _quickPanel.contains(_finger) && _quickScroll.hasClients
-        ? ((_finger.dy - _quickPanel.top + _quickScroll.offset) / _quickRow)
+    final surface = _quickSurface;
+    final geometry = surface?._geometry;
+    if (surface == null || geometry == null || _quickClosing) return;
+    final next = geometry.panel.contains(_finger)
+        ? ((_finger.dy - geometry.panel.top - 8 + surface._offset) /
+                  geometry.rowHeight)
               .floor()
-              .clamp(0, widget.options.length - 1)
+              .clamp(0, surface.options.length - 1)
         : null;
-    if (_candidate != next) {
-      _candidate = next;
+    if (surface.previewCandidate != next) {
+      surface.previewCandidate = next;
       _quick?.markNeedsBuild();
     }
   }
 
-  void _quickEnd(bool commit) {
-    if (_quick == null) return;
-    final result = _candidate;
+  Future<void> _quickEnd(bool commit) async {
+    if (_quick == null || _quickClosing) return;
+    _quickClosing = true;
+    _edgeTimer?.cancel();
+    final result = commit ? _quickSurface!.previewCandidate : null;
+    _quickSurface!.close(result);
+    final history = _history;
+    _history = null;
+    history?.remove();
+    if (result != null && result != selected && mounted) {
+      BrockmannFeedbackScope.of(context)?.selection();
+      widget.onChanged?.call(result);
+    }
+    // Use the same full closing duration and label handoff as a tapped choice.
+    try {
+      await _quickMotion
+          .animateBack(0, duration: _quickMotion.reverseDuration)
+          .orCancel;
+    } on TickerCanceled {
+      return;
+    }
+    if (!mounted) return;
+    _removeQuick();
+    setState(() {});
+  }
+
+  void _removeQuick() {
     _edgeTimer?.cancel();
     _quick?.remove();
     _quick?.dispose();
     _quick = null;
+    _quickSurface?.dispose();
+    _quickSurface = null;
     final history = _history;
     _history = null;
     history?.remove();
     _open = false;
-    if (commit && result != null && result != selected && mounted) {
-      BrockmannFeedbackScope.of(context)?.selection();
-      widget.onChanged?.call(result);
-    }
   }
 
   @override
   void dispose() {
-    _quickEnd(false);
-    _quickScroll.dispose();
+    _quickClosing = true;
+    _quickMotion.dispose();
+    _removeQuick();
     super.dispose();
   }
 
@@ -523,40 +525,46 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
             label:
                 '${widget.label}, ${widget.options.isEmpty ? 'No options' : widget.options[selected]}',
             onPressed: enabled ? _show : null,
-            builder: (c, p) => Container(
-              constraints: const BoxConstraints(minHeight: 80),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              foregroundDecoration: BoxDecoration(
-                border: Border.all(
-                  color: !enabled
-                      ? Colors.transparent
-                      : p
-                      ? t.foreground
-                      : _hover
-                      ? t.lineStrong
-                      : Colors.transparent,
-                  width: 2,
+            builder: (c, p) => Opacity(
+              opacity: _quick == null ? 1 : 0,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 80),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  BrockmannText(
-                    widget.label,
-                    role: BrockmannType.label,
-                    color: enabled ? t.secondary : t.disabled,
+                foregroundDecoration: BoxDecoration(
+                  border: Border.all(
+                    color: !enabled
+                        ? Colors.transparent
+                        : p
+                        ? t.foreground
+                        : _hover
+                        ? t.lineStrong
+                        : Colors.transparent,
+                    width: 2,
                   ),
-                  const SizedBox(height: 4),
-                  BrockmannText(
-                    widget.options.isEmpty
-                        ? 'No options'
-                        : widget.options[selected],
-                    key: _valueKey,
-                    role: BrockmannType.value,
-                    color: enabled ? t.foreground : t.disabled,
-                  ),
-                ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BrockmannText(
+                      widget.label,
+                      role: BrockmannType.label,
+                      color: enabled ? t.secondary : t.disabled,
+                    ),
+                    const SizedBox(height: 4),
+                    BrockmannText(
+                      widget.options.isEmpty
+                          ? 'No options'
+                          : widget.options[selected],
+                      key: _valueKey,
+                      role: BrockmannType.value,
+                      color: enabled ? t.foreground : t.disabled,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -626,13 +634,23 @@ class _PickerRoute extends PageRoute<int> {
   final bool fullPage;
   final BrockmannThemeData theme;
   final ValueChanged<int> onSelected;
-  ScrollController? _scroll;
-  double _initialOffset = 0;
   bool _closing = false;
-  _PickerGeometry? _geometry;
-  _PickerExit? _exit;
-  double get _offset =>
-      _scroll?.hasClients == true ? _scroll!.offset : _initialOffset;
+  late final _surface = _PickerSurface(
+    label: label,
+    options: options,
+    selected: selected,
+    anchor: anchor,
+    closedValue: closedValue,
+    liveValue: liveValue,
+    fullPage: fullPage,
+    theme: theme,
+    animation: animation!,
+    onCancel: () => navigator?.pop(),
+    onSelected: (index) {
+      onSelected(index);
+      navigator?.pop(index);
+    },
+  );
   @override
   Color get barrierColor =>
       Colors.black.withValues(alpha: theme.light ? .4 : .6);
@@ -650,10 +668,95 @@ class _PickerRoute extends PageRoute<int> {
   Duration get reverseTransitionDuration => Duration(
     milliseconds: (theme.reduceMotion ? 100 : 200 * theme.motionScale).round(),
   );
+  @override
+  bool didPop(int? result) {
+    _closing = true;
+    _surface.close(result);
+    final popped = super.didPop(result);
+    if (popped && !fullPage) {
+      controller?.animateBack(0, duration: reverseTransitionDuration);
+    }
+    return popped;
+  }
+
+  @override
+  void dispose() {
+    _surface.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) => _surface.build(context);
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (!fullPage) {
+      return AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (c, child) => IgnorePointer(
+          ignoring: _closing,
+          child: ExcludeFocus(excluding: _closing, child: child!),
+        ),
+      );
+    }
+    if (theme.reduceMotion) {
+      return FadeTransition(opacity: animation, child: child);
+    }
+    return const PredictiveBackPageTransitionsBuilder().buildTransitions(
+      this,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
+    );
+  }
+}
+
+class _PickerSurface {
+  _PickerSurface({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.anchor,
+    required this.closedValue,
+    required this.liveValue,
+    required this.fullPage,
+    required this.theme,
+    required this.onSelected,
+    required this.onCancel,
+    required this.animation,
+  });
+  final String label;
+  final List<String> options;
+  final int selected;
+  final Rect anchor, closedValue;
+  final Rect? Function() liveValue;
+  final bool fullPage;
+  final BrockmannThemeData theme;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onCancel;
+  final Animation<double> animation;
+  int? previewCandidate;
+  ScrollController? _scroll;
+  double _initialOffset = 0;
+  bool _closing = false;
+  _PickerGeometry? _geometry;
+  _PickerExit? _exit;
+  double get _offset =>
+      _scroll?.hasClients == true ? _scroll!.offset : _initialOffset;
   double get _opening => theme.reduceMotion
       ? 1
       : brockmannOutExpo.transform(
-          ((animation?.value ?? 1) * (fullPage ? 2 : 1)).clamp(0, 1),
+          ((animation.value) * (fullPage ? 2 : 1)).clamp(0, 1),
         );
   Rect _reveal(_PickerGeometry geometry) => Rect.lerp(
     geometry.selectedPanel(selected, _offset),
@@ -664,57 +767,40 @@ class _PickerRoute extends PageRoute<int> {
     final exit = _exit;
     if (theme.reduceMotion) {
       return exit == null
-          ? animation!.value
-          : (animation!.value / math.max(.000001, exit.start)).clamp(0, 1);
+          ? animation.value
+          : (animation.value / math.max(.000001, exit.start)).clamp(0, 1);
     }
     return exit == null
-        ? brockmannOutExpo.transform((animation!.value * 220 / 120).clamp(0, 1))
+        ? brockmannOutExpo.transform((animation.value * 220 / 120).clamp(0, 1))
         : exit.opacity *
               (1 -
                   brockmannInExpo.transform(
-                    ((exit.start - animation!.value) /
+                    ((exit.start - animation.value) /
                             math.max(.000001, exit.start))
                         .clamp(0, 1),
                   ));
   }
 
-  @override
-  bool didPop(int? result) {
+  void close(int? result) {
     _closing = true;
     final g = _geometry;
     if (g != null && !fullPage) {
       final chosen = result ?? selected;
       final opacity = brockmannOutExpo.transform(
-        ((animation?.value ?? 1) * 220 / 120).clamp(0, 1),
+        ((animation.value) * 220 / 120).clamp(0, 1),
       );
       _exit = _PickerExit(
         _reveal(g),
         g.textRect(chosen, _offset),
         chosen,
-        animation!.value,
+        animation.value,
         opacity,
       );
     }
-    final popped = super.didPop(result);
-    if (popped && !fullPage) {
-      // Always give the handoff its full duration, including an early dismissal.
-      controller?.animateBack(0, duration: reverseTransitionDuration);
-    }
-    return popped;
   }
 
-  @override
-  void dispose() {
-    _scroll?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget buildPage(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  ) {
+  void dispose() => _scroll?.dispose();
+  Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final width = fullPage
         ? media.size.width - 48
@@ -778,10 +864,10 @@ class _PickerRoute extends PageRoute<int> {
       scroll: _scroll!,
       closingIndex: () => _exit?.index,
       panelOpacity: () => _opacity,
+      previewCandidate: previewCandidate,
       onSelected: (index) {
         if (_closing) return;
         onSelected(index);
-        Navigator.pop(context, index);
       },
     );
     return Semantics(
@@ -806,7 +892,7 @@ class _PickerRoute extends PageRoute<int> {
                           BrockmannIconButton(
                             icon: BrockmannIcon.arrowLeft,
                             label: 'Close $label',
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: onCancel,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -869,6 +955,7 @@ class _PickerRoute extends PageRoute<int> {
                       child: Opacity(
                         opacity: opacity,
                         child: DecoratedBox(
+                          key: const ValueKey('brockmann-picker-panel'),
                           decoration: BoxDecoration(
                             color: theme.surface,
                             border: Border.all(color: theme.line, width: 0),
@@ -913,35 +1000,6 @@ class _PickerRoute extends PageRoute<int> {
             ),
     );
   }
-
-  @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    if (!fullPage) {
-      return AnimatedBuilder(
-        animation: animation,
-        child: child,
-        builder: (c, child) => IgnorePointer(
-          ignoring: _closing,
-          child: ExcludeFocus(excluding: _closing, child: child!),
-        ),
-      );
-    }
-    if (theme.reduceMotion) {
-      return FadeTransition(opacity: animation, child: child);
-    }
-    return const PredictiveBackPageTransitionsBuilder().buildTransitions(
-      this,
-      context,
-      animation,
-      secondaryAnimation,
-      child,
-    );
-  }
 }
 
 class _PickerList extends StatefulWidget {
@@ -956,7 +1014,9 @@ class _PickerList extends StatefulWidget {
     required this.closingIndex,
     required this.panelOpacity,
     required this.onSelected,
+    this.previewCandidate,
   });
+  final int? previewCandidate;
   final String label;
   final List<String> options;
   final int selected;
@@ -1109,10 +1169,10 @@ class _PickerListState extends State<_PickerList> {
           ),
           IgnorePointer(
             child: Opacity(
-              opacity: _keyboard ? 1 : 0,
+              opacity: _keyboard || widget.previewCandidate != null ? 1 : 0,
               child: BrockmannMotion(
-                immediate: !_keyboard,
-                value: _candidate.toDouble(),
+                immediate: !_keyboard && widget.previewCandidate == null,
+                value: (widget.previewCandidate ?? _candidate).toDouble(),
                 milliseconds: 140,
                 builder: (c, position) => AnimatedBuilder(
                   animation: widget.scroll,

@@ -4,6 +4,80 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
+    'Hold uses the regular anchored geometry, reveal and closing label handoff',
+    (tester) async {
+      var selected = 1;
+      await tester.pumpWidget(
+        BrockmannApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                child: StatefulBuilder(
+                  builder: (c, set) => BrockmannPicker(
+                    label: 'choice',
+                    options: const ['one', 'two', 'a longer third option'],
+                    selected: selected,
+                    presentation: BrockmannPickerPresentation.anchored,
+                    onChanged: (v) => set(() => selected = v),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final field = find.byType(BrockmannPicker);
+      final panel = find.byKey(const ValueKey('brockmann-picker-panel'));
+      Finder option(String text) =>
+          find.descendant(of: find.byType(ListView), matching: find.text(text));
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+      final regularPanel = tester.getRect(panel);
+      final regularText = tester.getRect(option('two'));
+      final regularStyle = tester.widget<Text>(option('two')).style;
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      final gesture = await tester.startGesture(tester.getCenter(field));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      final collapsed = tester.getRect(panel);
+      expect(collapsed.height, lessThan(regularPanel.height));
+      await tester.pump(const Duration(milliseconds: 80));
+      final revealing = tester.getRect(panel);
+      expect(revealing.height, greaterThan(collapsed.height));
+      expect(revealing.height, lessThan(regularPanel.height));
+      await tester.pump(const Duration(milliseconds: 160));
+      expect(tester.getRect(panel), regularPanel);
+      expect(tester.getRect(option('two')), regularText);
+      expect(tester.widget<Text>(option('two')).style, regularStyle);
+      await gesture.moveTo(tester.getCenter(option('a longer third option')));
+      await tester.pump(const Duration(milliseconds: 160));
+      final source = tester.getTopLeft(option('a longer third option'));
+      await gesture.up();
+      await tester.pump();
+      expect(selected, 2);
+      final carried = find.byKey(const ValueKey('brockmann-picker-carry'));
+      expect(carried, findsOneWidget);
+      expect(tester.getTopLeft(carried), source);
+      final destination = tester.getTopLeft(
+        find.descendant(
+          of: field,
+          matching: find.text('a longer third option'),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        (tester.getTopLeft(carried) - destination).distance,
+        lessThan((source - destination).distance),
+      );
+      await tester.pumpAndSettle();
+      expect(carried, findsNothing);
+      expect(panel, findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'Hold, drag and release commits once; releasing outside cancels',
     (tester) async {
       var value = 0;
