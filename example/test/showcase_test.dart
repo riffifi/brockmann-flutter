@@ -4,6 +4,82 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'All six reorder variants fit a narrow screen at double text scale',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 900);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(() {
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetPhysicalSize();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+      });
+      await tester.pumpWidget(const Showcase());
+      tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(3);
+      await tester.pumpAndSettle();
+      for (final axis in Axis.values) {
+        tester
+            .widget<BrockmannSegmentedControl<Axis>>(
+              find.byType(BrockmannSegmentedControl<Axis>),
+            )
+            .onChanged!(axis);
+        await tester.pumpAndSettle();
+        for (final size in BrockmannTileSize.values) {
+          tester
+              .widget<BrockmannSegmentedControl<BrockmannTileSize>>(
+                find.byType(BrockmannSegmentedControl<BrockmannTileSize>),
+              )
+              .onChanged!(size);
+          await tester.pumpAndSettle();
+          final tile = find.byWidgetPredicate(
+            (w) => w is BrockmannTile && w.label == 'kick',
+          );
+          if (axis == Axis.vertical) {
+            await tester.scrollUntilVisible(
+              tile,
+              200,
+              scrollable: find
+                  .descendant(
+                    of: find.byType(BrockmannReorderableList),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            );
+          } else {
+            await tester.ensureVisible(tile);
+          }
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widget<BrockmannReorderableList>(
+                  find.byType(BrockmannReorderableList),
+                )
+                .axis,
+            axis,
+          );
+          expect(tester.widget<BrockmannTile>(tile).size, size);
+          expect(tester.getSize(tile).height, greaterThanOrEqualTo(88));
+          expect(tester.takeException(), isNull, reason: '$axis $size');
+          if (axis == Axis.vertical) {
+            tester
+                .state<ScrollableState>(
+                  find
+                      .descendant(
+                        of: find.byType(BrockmannReorderableList),
+                        matching: find.byType(Scrollable),
+                      )
+                      .first,
+                )
+                .position
+                .jumpTo(0);
+            await tester.pumpAndSettle();
+          }
+        }
+      }
+    },
+  );
+
   for (final width in [320.0, 412.0]) {
     for (final scale in [1.0, 2.0]) {
       for (final light in [false, true]) {

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'foundation.dart';
 import 'motion.dart';
+import 'reorder.dart';
 
 import 'package:flutter/scheduler.dart';
 
@@ -77,6 +78,8 @@ class BrockmannListItem extends StatelessWidget {
   }
 }
 
+enum BrockmannTileSize { small, medium, large }
+
 class BrockmannTile extends StatefulWidget {
   const BrockmannTile({
     super.key,
@@ -84,13 +87,21 @@ class BrockmannTile extends StatefulWidget {
     required this.value,
     this.active = false,
     this.onPressed,
-    this.height = 128,
+    double? height,
+    this.size = BrockmannTileSize.medium,
     this.width,
-  });
+  }) : height =
+           height ??
+           (size == BrockmannTileSize.small
+               ? 88
+               : size == BrockmannTileSize.large
+               ? 192
+               : 128);
   final String label, value;
   final bool active;
   final VoidCallback? onPressed;
   final double height;
+  final BrockmannTileSize size;
   final double? width;
   @override
   State<BrockmannTile> createState() => _BrockmannTileState();
@@ -130,36 +141,38 @@ class _BrockmannTileState extends State<BrockmannTile>
           animation: _pulse,
           builder: (c, _) {
             final pulse = _pulse.isAnimating ? 1 - _pulse.value : 0.0;
-            return AnimatedContainer(
-              duration: t.duration(c, p ? 60 : 160),
-              constraints: BoxConstraints(minHeight: widget.height),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: widget.active
-                    ? Color.lerp(t.accent, Colors.black, p ? .18 : 0)
-                    : Color.lerp(t.background, t.accent, pulse),
-                border: widget.active
-                    ? null
-                    : Border.all(color: t.line, width: 0),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  BrockmannText(
-                    widget.value,
-                    role: widget.height >= 160
-                        ? BrockmannType.pixelSquare
-                        : BrockmannType.monoLarge,
-                    color: Color.lerp(fg, t.onAccent, pulse),
-                  ),
-                  const SizedBox(height: 24),
-                  BrockmannText(
-                    widget.label,
-                    role: BrockmannType.label,
-                    color: widget.active ? fg : t.secondary,
-                  ),
-                ],
+            return BrockmannReorderableItem(
+              child: AnimatedContainer(
+                duration: t.duration(c, p ? 60 : 160),
+                constraints: BoxConstraints(minHeight: widget.height),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: widget.active
+                      ? Color.lerp(t.accent, Colors.black, p ? .18 : 0)
+                      : Color.lerp(t.background, t.accent, pulse),
+                  border: widget.active
+                      ? null
+                      : Border.all(color: t.line, width: 0),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BrockmannText(
+                      widget.value,
+                      role: widget.height >= 160
+                          ? BrockmannType.pixelSquare
+                          : BrockmannType.monoLarge,
+                      color: Color.lerp(fg, t.onAccent, pulse),
+                    ),
+                    SizedBox(height: widget.height < 112 ? 8 : 24),
+                    BrockmannText(
+                      widget.label,
+                      role: BrockmannType.label,
+                      color: widget.active ? fg : t.secondary,
+                    ),
+                  ],
+                ),
               ),
             );
           },

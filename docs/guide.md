@@ -96,3 +96,11 @@ lifting: release inside to choose, outside to cancel. Hold near an edge to scrol
 Date changes and settled time-wheel changes provide haptic-only detents.
 Context actions consistently open the large typographic bottom sheet.
 See [Metro interaction guidance](metro-audit.md) for sources and design decisions.
+
+The Tiles showcase offers all six combinations of vertical/horizontal and
+small/medium/large. Choose `BrockmannTileSize` for density, then constrain a
+horizontal viewport’s height and tile widths for the current text scale.
+Keep margins outside `BrockmannReorderableItem`; it marks the painted tile rather
+than the reorder slot. `BrockmannTile` already includes that surface. Use the
+list’s `spacing` property for gaps. Direct reorder regions own their pointers,
+so horizontal drags cannot switch screens.

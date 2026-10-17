@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -167,6 +168,8 @@ class _CatalogueState extends State<Catalogue> {
     super.dispose();
   }
 
+  Axis tileAxis = Axis.vertical;
+  BrockmannTileSize tileSize = BrockmannTileSize.medium;
   final order = [
     'kick',
     'snare',
@@ -205,6 +208,89 @@ class _CatalogueState extends State<Catalogue> {
       BrockmannText(text, color: context.brockmann.secondary);
   Widget buttons(List<Widget> children) =>
       Wrap(spacing: 16, runSpacing: 12, children: children);
+  Widget _tileCatalogue() {
+    final scale = MediaQuery.textScalerOf(context);
+    final base = tileSize == BrockmannTileSize.small
+        ? 88.0
+        : tileSize == BrockmannTileSize.large
+        ? 192.0
+        : 128.0;
+    final height = math.max(
+      base,
+      scale.scale(base >= 160 ? 72 : 36) +
+          scale.scale(16) +
+          (base < 112 ? 8 : 24) +
+          24,
+    );
+    final width =
+        (tileSize == BrockmannTileSize.small
+            ? 144.0
+            : tileSize == BrockmannTileSize.large
+            ? 256.0
+            : 192.0) *
+        math.max(1, scale.scale(16) / 16);
+    final configuration = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 24),
+        const BrockmannText('hold, then move', role: BrockmannType.heading),
+        const SizedBox(height: 12),
+        note(
+          'Hold for 250 ms, then move. Feel pickup and placement. TalkBack offers Move earlier / later.',
+        ),
+        const SizedBox(height: 16),
+        BrockmannSegmentedControl<Axis>(
+          options: Axis.values.reversed.toList(),
+          value: tileAxis,
+          labelFor: (v) => v.name,
+          onChanged: (v) => setState(() => tileAxis = v),
+        ),
+        const SizedBox(height: 8),
+        BrockmannSegmentedControl<BrockmannTileSize>(
+          options: BrockmannTileSize.values,
+          value: tileSize,
+          labelFor: (v) => v.name,
+          onChanged: (v) => setState(() => tileSize = v),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+    final list = BrockmannReorderableList(
+      key: ValueKey('reorder-${tileAxis.name}-${tileSize.name}'),
+      axis: tileAxis,
+      header: tileAxis == Axis.vertical ? configuration : null,
+      spacing: 12,
+      padding: tileAxis == Axis.vertical
+          ? const EdgeInsets.only(bottom: 24)
+          : EdgeInsets.zero,
+      onReorder: (a, b) => setState(() => order.insert(b, order.removeAt(a))),
+      children: [
+        for (var i = 0; i < order.length; i++)
+          BrockmannTile(
+            key: ValueKey(order[i]),
+            label: order[i],
+            value: '${i + 1}'.padLeft(2, '0'),
+            size: tileSize,
+            width: tileAxis == Axis.horizontal ? width : null,
+            active: i == 0,
+            onPressed: () {},
+          ),
+      ],
+    );
+    return tileAxis == Axis.vertical
+        ? list
+        : SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                configuration,
+                SizedBox(height: height, child: list),
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
     final header = Padding(
@@ -409,38 +495,7 @@ class _CatalogueState extends State<Catalogue> {
         ),
       ]),
     ]),
-    3 => BrockmannReorderableList(
-      header: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const BrockmannText('hold, then move', role: BrockmannType.heading),
-            const SizedBox(height: 12),
-            note(
-              'Hold a tile for 250 ms. Neighbours make room as you move. TalkBack offers Move earlier / later.',
-            ),
-          ],
-        ),
-      ),
-      onReorder: (a, b) => setState(() => order.insert(b, order.removeAt(a))),
-      children: [
-        for (var i = 0; i < order.length; i++)
-          Padding(
-            key: ValueKey(order[i]),
-            padding: const EdgeInsets.only(bottom: 12),
-            child: BrockmannFeather(
-              index: i + 1,
-              child: BrockmannTile(
-                label: order[i],
-                value: '${i + 1}'.padLeft(2, '0'),
-                active: i == 0,
-                onPressed: () {},
-              ),
-            ),
-          ),
-      ],
-    ),
+    3 => _tileCatalogue(),
     4 => section('a moment of focus', [
       note(
         'On phones, lists open as a full page with the current selection in view. Back closes without changing the value.',

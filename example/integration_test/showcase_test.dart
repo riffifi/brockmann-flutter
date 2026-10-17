@@ -31,6 +31,64 @@ void main() {
         }
         expect(tester.takeException(), isNull, reason: pages[page]);
       }
+      tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(3);
+      await tester.pumpAndSettle();
+      for (final axis in [Axis.vertical, Axis.horizontal]) {
+        tester
+            .widget<BrockmannSegmentedControl<Axis>>(
+              find.byType(BrockmannSegmentedControl<Axis>),
+            )
+            .onChanged!(axis);
+        await tester.pumpAndSettle();
+        final list = find.byType(BrockmannReorderableList);
+        final before = tester
+            .widget<BrockmannReorderableList>(list)
+            .children
+            .first
+            .key;
+        final tile = find.byType(BrockmannTile).first;
+        await tester.ensureVisible(tile);
+        await tester.pumpAndSettle();
+        final drag = await tester.startGesture(tester.getCenter(tile));
+        await tester.pump(const Duration(milliseconds: 260));
+        await tester.pump(const Duration(milliseconds: 120));
+        expect(
+          find.byKey(const ValueKey('brockmann-reorder-outline')),
+          findsOneWidget,
+        );
+        await drag.moveBy(
+          axis == Axis.vertical ? const Offset(0, 20) : const Offset(20, 0),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+        final movement = axis == Axis.vertical
+            ? const Offset(0, 240)
+            : const Offset(300, 0);
+        for (var step = 0; step < 16; step++) {
+          await drag.moveBy(movement / 16);
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        await drag.up();
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<BrockmannReorderableList>(list).children.first.key,
+          isNot(before),
+        );
+        expect(
+          tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).selected,
+          3,
+        );
+        if (axis == Axis.vertical) {
+          tester
+              .state<ScrollableState>(
+                find
+                    .descendant(of: list, matching: find.byType(Scrollable))
+                    .first,
+              )
+              .position
+              .jumpTo(0);
+          await tester.pumpAndSettle();
+        }
+      }
       tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(0);
       await tester.pumpAndSettle();
       final field = find.byType(BrockmannColorField);

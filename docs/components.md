@@ -78,3 +78,23 @@ The showcase includes separate adaptive icon foreground/background layers and An
 Boundary stretch uses the actual scroll axis and direction, so top/bottom and left/right remain consistent for reversed lists. Retain the application scroll behavior when constructing custom scroll views. Use a live meter for signal levels and `BrockmannProgress` for work progress; a vertical meter stays 4 dp wide even inside a stretched layout.
 
 Anchored pickers share the same renderer and reveal/closing label animations for tapping and holding. They support hold-and-drag selection, edge auto-scrolling, release-to-commit and outside/Back cancellation. Date selections and settled time-wheel changes emit restrained haptic-only detents. See [Metro guidance](metro-audit.md).
+
+## Reorder variants
+
+`BrockmannTile(size: BrockmannTileSize.small | medium | large, ...)` provides
+88, 128 and 192 dp minimum heights. Tiles grow for text; `height` remains an
+explicit override. The showcase’s Tiles screen combines these with vertical
+lists and horizontal strips, preserving the same item order when switching.
+
+`BrockmannReorderableList(axis: Axis.horizontal, spacing: 12, ...)` uses the same
+250 ms hold, flat proxy, moving neighbours and automatic edge scroll as a
+vertical list. Give horizontal lists a bounded height and children explicit
+widths, allowing enough room for scaled text. List spacing defaults to zero for
+compatibility; use `spacing` instead of padding the tile’s painted content.
+
+The animated drag outline follows the tile surface, excluding list gaps and
+outer margins. `BrockmannTile` includes this automatically. For custom content,
+wrap only its painted surface with `BrockmannReorderableItem`, inside any outer
+padding. Pickup and release each emit one native haptic; intermediate movement
+stays quiet. TalkBack’s Move earlier/later commits emit one landing tick.
+Haptic mute and system preferences apply, independently of sound.
