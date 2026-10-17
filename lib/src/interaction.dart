@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import 'feedback.dart';
+import 'theme.dart';
 
 /// Shared by the page switcher and regions whose pointers it must not claim.
 class BrockmannGestureScope extends InheritedWidget {
@@ -51,16 +52,20 @@ class BrockmannInteractionRegion extends StatelessWidget {
   }
 }
 
-/// One OS-respecting tactile pickup when holding or grabbing a handle. No
+/// Animated visual pickup plus one OS-respecting tactile response. No
 /// continuous ticks, sound, or repeated impact during the same pointer gesture.
 class BrockmannHandleFeedback extends StatefulWidget {
   const BrockmannHandleFeedback({
     super.key,
-    required this.child,
+    this.child,
+    this.builder,
     required this.isHandle,
     this.enabled = true,
-  });
-  final Widget child;
+  }) : assert(child != null || builder != null);
+  final Widget? child;
+
+  /// Receives the animated hold amount, from rest (0) to held (1).
+  final Widget Function(BuildContext, double)? builder;
   final bool enabled;
   final bool Function(Offset local, Size size) isHandle;
   @override
@@ -68,7 +73,13 @@ class BrockmannHandleFeedback extends StatefulWidget {
       _BrockmannHandleFeedbackState();
 }
 
-class _BrockmannHandleFeedbackState extends State<BrockmannHandleFeedback> {
+class _BrockmannHandleFeedbackState extends State<BrockmannHandleFeedback>
+    with SingleTickerProviderStateMixin {
+  late final _press = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 80),
+    reverseDuration: const Duration(milliseconds: 180),
+  );
   Timer? _timer;
   Offset? _start;
   int? _pointer;
@@ -85,11 +96,13 @@ class _BrockmannHandleFeedbackState extends State<BrockmannHandleFeedback> {
     _start = null;
     _pointer = null;
     _fired = false;
+    _press.reverse();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _press.dispose();
     super.dispose();
   }
 
@@ -103,6 +116,9 @@ class _BrockmannHandleFeedbackState extends State<BrockmannHandleFeedback> {
             if (!widget.isHandle(box.globalToLocal(e.position), box.size)) {
               return;
             }
+            _press.duration = context.brockmann.duration(context, 80);
+            _press.reverseDuration = context.brockmann.duration(context, 180);
+            _press.forward();
             _pointer = e.pointer;
             _start = e.position;
             _fired = false;
@@ -114,6 +130,7 @@ class _BrockmannHandleFeedbackState extends State<BrockmannHandleFeedback> {
       if (!_fired && delta.dy.abs() > 8 && delta.dy.abs() > delta.dx.abs()) {
         _timer?.cancel();
         _start = null;
+        _press.reverse();
       } else if (delta.dx.abs() > 8) {
         fire();
       }
@@ -124,6 +141,11 @@ class _BrockmannHandleFeedbackState extends State<BrockmannHandleFeedback> {
     onPointerCancel: (e) {
       if (e.pointer == _pointer) end();
     },
-    child: widget.child,
+    child: AnimatedBuilder(
+      animation: _press,
+      builder: (c, _) =>
+          widget.builder?.call(c, Curves.easeOut.transform(_press.value)) ??
+          widget.child!,
+    ),
   );
 }

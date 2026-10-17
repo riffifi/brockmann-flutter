@@ -42,6 +42,25 @@ class Audio implements BrockmannSoundBackend {
 }
 
 void main() {
+  testWidgets('Picker detents are haptic-only, coalesced and respect mute', (
+    tester,
+  ) async {
+    final haptics = Haptics(), audio = Audio();
+    final feedback = BrockmannFeedbackController(
+      backend: audio,
+      hapticBackend: haptics,
+    );
+    feedback.selection();
+    feedback.selection();
+    await tester.pump();
+    expect(haptics.played, [BrockmannSound.select]);
+    expect(audio.played, isEmpty);
+    await feedback.configure(haptics: BrockmannHapticMode.off);
+    feedback.selection();
+    expect(haptics.played, hasLength(1));
+    feedback.dispose();
+  });
+
   testWidgets(
     'Essential haptics work while audio is muted and prioritize outcomes',
     (tester) async {

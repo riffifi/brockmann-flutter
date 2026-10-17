@@ -237,51 +237,11 @@ Future<T?> showBrockmannContextMenu<T>(
   required List<BrockmannMenuEntry<T>> entries,
   bool showIcons = true,
 }) {
-  final t = context.brockmann;
-  final overlay =
-      Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
-  final local = overlay.globalToLocal(position);
-  return showMenu<T>(
-    context: context,
-    position: RelativeRect.fromRect(
-      local & const Size(1, 1),
-      Offset.zero & overlay.size,
-    ),
-    color: t.surface,
-    surfaceTintColor: Colors.transparent,
-    elevation: 0,
-    shape: Border.all(color: t.line),
-    menuPadding: const EdgeInsets.symmetric(vertical: 8),
-    items: [
-      for (final entry in entries)
-        PopupMenuItem<T>(
-          value: entry.value,
-          enabled: entry.enabled,
-          height: 48,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showIcons && entry.icon != null) ...[
-                BrockmannGlyph(
-                  entry.icon!,
-                  color: entry.destructive ? t.danger : t.secondary,
-                ),
-                const SizedBox(width: 16),
-              ],
-              Flexible(
-                child: BrockmannText(
-                  entry.label,
-                  color: !entry.enabled
-                      ? t.disabled
-                      : entry.destructive
-                      ? t.danger
-                      : t.foreground,
-                ),
-              ),
-            ],
-          ),
-        ),
-    ],
+  return showBrockmannActionSheet<T>(
+    context,
+    title: 'actions',
+    entries: entries,
+    showIcons: showIcons,
   );
 }
 
@@ -360,6 +320,7 @@ Future<T?> showBrockmannActionSheet<T>(
                         Expanded(
                           child: BrockmannText(
                             entry.label,
+                            role: BrockmannType.heading,
                             color: !entry.enabled
                                 ? t.disabled
                                 : entry.destructive

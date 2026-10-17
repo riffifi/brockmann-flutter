@@ -409,7 +409,7 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
                                           (size.width - 24)))
                               .abs() <=
                           24,
-                      child: GestureDetector(
+                      builder: (context, press) => GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         dragStartBehavior: DragStartBehavior.down,
                         onTapDown: enabled
@@ -470,6 +470,7 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
                           width: double.infinity,
                           child: CustomPaint(
                             painter: _SliderPainter(
+                              press: press,
                               gradient: widget.trackGradient,
                               value:
                                   ((visual - widget.min) /
@@ -498,6 +499,7 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
 
 class _SliderPainter extends CustomPainter {
   _SliderPainter({
+    this.press = 0,
     required this.value,
     required this.zero,
     required this.theme,
@@ -506,6 +508,7 @@ class _SliderPainter extends CustomPainter {
   });
   final Gradient? gradient;
   final double value, zero;
+  final double press;
   final BrockmannThemeData theme;
   final bool enabled;
   @override
@@ -536,14 +539,22 @@ class _SliderPainter extends CustomPainter {
       );
     }
     c.drawRect(
-      Rect.fromLTWH(value * s.width - 6, y - 14, 12, 28),
-      Paint()..color = enabled ? theme.foreground : theme.disabled,
+      Rect.fromCenter(
+        center: Offset(value * s.width, y),
+        width: 12 + 8 * press,
+        height: 28 + 10 * press,
+      ),
+      Paint()
+        ..color = enabled
+            ? Color.lerp(theme.foreground, theme.accent, press)!
+            : theme.disabled,
     );
     c.restore();
   }
 
   @override
   bool shouldRepaint(covariant _SliderPainter o) =>
+      o.press != press ||
       o.gradient != gradient ||
       o.value != value ||
       o.theme != theme ||

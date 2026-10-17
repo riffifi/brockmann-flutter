@@ -5,23 +5,25 @@ Validated on 18 October 2026 with Flutter 3.47.4 / Dart 3.13.3.
 ## Local checks
 
 - `flutter analyze`: no issues.
-- `flutter test` in the library: 45 passing tests.
+- `flutter test` in the library: 47 passing tests.
 - `flutter test` in the showcase: ten passing tests. Each catalogue page is sampled through intermediate animation frames at 320 and 412 dp, text scale 1 and 2, in both themes. Separate checks verify that editing survives navigation and that tag removal updates the showcase state.
 - Android arm64 profile APK builds successfully with the native SoundPool and Activity-aware haptic plugin.
 
 The library checks cover contrast, two-way toggle/drag input, motion interruption, retained navigation, anchored text carry and keyboard focus, explicit phone dropdown presentation, predictive-back cancellation and completion, palette/HSV selection, dial arc and centre input, slider thumb capture, fixed vertical meter width, nested gesture ownership, single/muted handle-hold haptics, custom date bounds/leap days/cancellation, time-wheel drafts, typography-led action surfaces with familiar glyphs and accessible labels, both overflow orientations, narrow/large-text input layouts, both weights of all 45 icons, typed context-menu results/disabled entries, horizontal/vertical edge feedback, reorder, audio/haptic admission and lifecycle cancellation.
 
+The current update adds continuous hold/drag/release and cancellation checks for anchored choices, plus haptic-only detent admission and large bottom-sheet context actions.
+
 ## Physical Pixel 7
 
 Connected device: Pixel 7, Android 17 / API 37. Profile-mode integration visits all eleven pages, samples the animation frame by frame, drags the colour plane and hue slider without changing pages, drags a dial, selects from anchored and full-page dropdowns, confirms custom calendar/time-wheel choices, preloads native sound without playing audio, and requests a short confirmation haptic. The run passed. Android accepted the haptic request; the exact physical feel remains a user/device judgment.
 
-Recorded profile sample (the full catalogue plus colour, dial and dropdown interactions, before the core-glyph/overflow refinement):
+Recorded profile sample (the full catalogue plus colour, dial and dropdown interactions, including the handle-feedback, picker-detent and context-sheet update):
 
 | Measurement | Result |
 | --- | --- |
 | Frames collected | 524 |
-| Build duration, p95 | 11.785 ms |
-| Raster duration, p95 | 18.016 ms |
+| Build duration, p95 | 14.416 ms |
+| Raster duration, p95 | 17.981 ms |
 | Native sound bank | Ready |
 | Haptic request accepted | True |
 

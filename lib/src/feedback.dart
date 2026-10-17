@@ -241,6 +241,19 @@ class BrockmannFeedbackController extends ChangeNotifier
     });
   }
 
+  int _selectionAt = -1000;
+
+  /// A restrained, haptic-only detent for deliberate picker changes.
+  void selection() {
+    if (_disposed || !_foreground || _hapticMode == BrockmannHapticMode.off) {
+      return;
+    }
+    final now = _clock.elapsedMilliseconds;
+    if (now - _selectionAt < 80) return;
+    _selectionAt = now;
+    unawaited(_haptics.play(BrockmannSound.select));
+  }
+
   /// One tick at pickup / landing; never emit ticks for intermediate drag moves.
   void gesture({required bool lifting}) {
     if (_disposed || !_foreground || _hapticMode == BrockmannHapticMode.off) {

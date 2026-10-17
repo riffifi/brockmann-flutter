@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
+import 'feedback.dart';
 import 'foundation.dart';
 import 'navigation.dart';
 import 'interaction.dart';
@@ -123,7 +124,16 @@ class _BrockmannCalendarState extends State<BrockmannCalendar> {
                         child: BrockmannPressable(
                           label: locale.formatFullDate(date),
                           onPressed: enabled
-                              ? () => widget.onChanged(date)
+                              ? () {
+                                  if (!DateUtils.isSameDay(
+                                    date,
+                                    widget.value,
+                                  )) {
+                                    BrockmannFeedbackScope.of(context)
+                                        ?.selection();
+                                    widget.onChanged(date);
+                                  }
+                                }
                               : null,
                           builder: (c, p) => AnimatedContainer(
                             key: ValueKey(
@@ -230,6 +240,12 @@ class _NumberWheel extends StatefulWidget {
 }
 
 class _NumberWheelState extends State<_NumberWheel> {
+  int? _scrollStart;
+  void _step(int value) {
+    BrockmannFeedbackScope.of(context)?.selection();
+    widget.onChanged(value);
+  }
+
   late final _controller = FixedExtentScrollController(
     initialItem: widget.value,
   );
@@ -277,11 +293,9 @@ class _NumberWheelState extends State<_NumberWheel> {
               .toString()
               .padLeft(2, '0'),
           onIncrease: widget.value < widget.count - 1
-              ? () => widget.onChanged(widget.value + 1)
+              ? () => _step(widget.value + 1)
               : null,
-          onDecrease: widget.value > 0
-              ? () => widget.onChanged(widget.value - 1)
-              : null,
+          onDecrease: widget.value > 0 ? () => _step(widget.value - 1) : null,
           child: BrockmannInteractionRegion(
             child: SizedBox(
               height: height * 3,
@@ -301,23 +315,39 @@ class _NumberWheelState extends State<_NumberWheel> {
                     ),
                   ),
                   ExcludeSemantics(
-                    child: ListWheelScrollView.useDelegate(
-                      key: ValueKey('brockmann-time-${widget.label}'),
-                      controller: _controller,
-                      itemExtent: height,
-                      physics: const FixedExtentScrollPhysics(),
-                      diameterRatio: 1.5,
-                      perspective: .002,
-                      overAndUnderCenterOpacity: .35,
-                      onSelectedItemChanged: (v) {
-                        if (v != widget.value) widget.onChanged(v);
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (n) {
+                        if (n is ScrollStartNotification &&
+                            n.dragDetails != null) {
+                          _scrollStart = widget.value;
+                        }
+                        if (n is ScrollEndNotification &&
+                            _scrollStart != null) {
+                          if (_scrollStart != widget.value) {
+                            BrockmannFeedbackScope.of(context)?.selection();
+                          }
+                          _scrollStart = null;
+                        }
+                        return false;
                       },
-                      childDelegate: ListWheelChildBuilderDelegate(
-                        childCount: widget.count,
-                        builder: (c, i) => Center(
-                          child: BrockmannText(
-                            i.toString().padLeft(2, '0'),
-                            role: BrockmannType.monoLarge,
+                      child: ListWheelScrollView.useDelegate(
+                        key: ValueKey('brockmann-time-${widget.label}'),
+                        controller: _controller,
+                        itemExtent: height,
+                        physics: const FixedExtentScrollPhysics(),
+                        diameterRatio: 1.5,
+                        perspective: .002,
+                        overAndUnderCenterOpacity: .35,
+                        onSelectedItemChanged: (v) {
+                          if (v != widget.value) widget.onChanged(v);
+                        },
+                        childDelegate: ListWheelChildBuilderDelegate(
+                          childCount: widget.count,
+                          builder: (c, i) => Center(
+                            child: BrockmannText(
+                              i.toString().padLeft(2, '0'),
+                              role: BrockmannType.monoLarge,
+                            ),
                           ),
                         ),
                       ),

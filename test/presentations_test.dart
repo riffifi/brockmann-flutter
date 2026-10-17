@@ -108,7 +108,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets(
-    'Context menu honours disabled actions and returns typed choice',
+    'Context actions use a large bottom sheet and preserve typed choices',
     (tester) async {
       String? selected;
       await tester.pumpWidget(
@@ -139,6 +139,19 @@ void main() {
       );
       await tester.longPress(find.text('Hold'));
       await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(find.byType(PopupMenuItem<String>), findsNothing);
+      expect(
+        tester
+            .widget<BrockmannText>(
+              find.ancestor(
+                of: find.text('Copy'),
+                matching: find.byType(BrockmannText),
+              ),
+            )
+            .role,
+        BrockmannType.heading,
+      );
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();
       expect(selected, isNull);

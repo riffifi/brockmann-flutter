@@ -276,8 +276,17 @@ class _SquareRangeThumb extends RangeSliderThumbShape {
     bool? isPressed,
   }) {
     context.canvas.drawRect(
-      Rect.fromCenter(center: center, width: 12, height: 28),
-      Paint()..color = sliderTheme.thumbColor!,
+      Rect.fromCenter(
+        center: center,
+        width: 12 + 8 * activationAnimation.value,
+        height: 28 + 10 * activationAnimation.value,
+      ),
+      Paint()
+        ..color = Color.lerp(
+          sliderTheme.thumbColor!,
+          sliderTheme.activeTrackColor!,
+          activationAnimation.value,
+        )!,
     );
   }
 }

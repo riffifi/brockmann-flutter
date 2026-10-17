@@ -33,9 +33,9 @@ const actions = [
 ];
 ```
 
-`BrockmannContextMenu<T>` wraps a child and opens on hold or secondary click; it delivers the selected value through `onSelected`. Its child should offer a visible alternate action for users who cannot discover long press. `showBrockmannContextMenu` accepts a global `position` for an explicit menu button. Disabled entries never return a result.
+`BrockmannContextMenu<T>` wraps a child and opens on hold or secondary click; it delivers the selected value through `onSelected`. Its child should offer a visible alternate action for users who cannot discover long press. `showBrockmannContextMenu` retains its global `position` argument for compatibility; all context actions now open the bottom action sheet. Disabled entries never return a result.
 
-`showBrockmannActionSheet(context, title: ..., entries: actions)` presents the same actions in a touch-friendly bottom sheet. Both menu helpers return null on cancellation. A supplied entry icon is rendered beside its visible label; entries without icons stay text-only. Use familiar, simple command symbols deliberately, without inventing a pictogram for every row. `showIcons: false` provides a wholly textual presentation. Marking an action destructive only changes its presentation; your application performs the action and decides whether confirmation is necessary.
+`showBrockmannActionSheet(context, title: ..., entries: actions)` presents actions in the same bottom sheet with 24 dp heading labels, wrapping and safe-area protection. Both menu helpers return null on cancellation. A supplied entry icon is rendered beside its visible label; entries without icons stay text-only. Use familiar, simple command symbols deliberately, without inventing a pictogram for every row. `showIcons: false` provides a wholly textual presentation. Marking an action destructive only changes its presentation; your application performs the action and decides whether confirmation is necessary.
 
 ## Composition
 
@@ -61,7 +61,7 @@ Phosphor provides 45 icons in regular and bold weights. Use `BrockmannGlyph` for
 
 Built-in colour planes, dials, sliders, range sliders and time wheels already use the region. Disabled controls do not claim gestures.
 
-Slider and range handles emit one tactile pickup after a 160 ms hold, or when dragging starts first. The same gesture never repeats an impact and emits no sound. Feedback uses the shared controller's native drag-start cue and respects haptic mute, lifecycle and Android settings. Supplying `BrockmannApp(feedback: controller)` enables this independently of audio.
+Slider handles visibly expand and take the accent on touch, then ease back on release; range handles use matching activation feedback. Slider and range handles emit one tactile pickup after a 160 ms hold, or when dragging starts first. The same gesture never repeats an impact and emits no sound. Feedback uses the shared controller's native drag-start cue and respects haptic mute, lifecycle and Android settings. Supplying `BrockmannApp(feedback: controller)` enables this independently of audio.
 
 ## Custom calendar and time editor
 
@@ -76,3 +76,5 @@ The full-screen choice is a page route using Flutter’s [predictive-back transi
 The showcase includes separate adaptive icon foreground/background layers and Android 13+ monochrome support, following [Android’s adaptive icon model](https://developer.android.com/develop/ui/views/launch/icon_design_adaptive). These assets brand the showcase; applications supply their own launcher identity.
 
 Boundary stretch uses the actual scroll axis and direction, so top/bottom and left/right remain consistent for reversed lists. Retain the application scroll behavior when constructing custom scroll views. Use a live meter for signal levels and `BrockmannProgress` for work progress; a vertical meter stays 4 dp wide even inside a stretched layout.
+
+Anchored pickers support hold-and-drag selection, edge auto-scrolling, release-to-commit and outside/Back cancellation. Date selections and settled time-wheel changes emit restrained haptic-only detents. See [Metro guidance](metro-audit.md).

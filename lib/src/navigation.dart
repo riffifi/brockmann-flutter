@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -261,6 +262,175 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
   int get selected => widget.options.isEmpty
       ? 0
       : widget.selected.clamp(0, widget.options.length - 1);
+  OverlayEntry? _quick;
+  LocalHistoryEntry? _history;
+  Timer? _edgeTimer;
+  final _quickScroll = ScrollController();
+  Rect _quickPanel = Rect.zero;
+  double _quickRow = 64;
+  int? _candidate;
+  Offset _finger = Offset.zero;
+  bool get _anchored =>
+      widget.presentation == BrockmannPickerPresentation.anchored ||
+      (widget.presentation == BrockmannPickerPresentation.adaptive &&
+          MediaQuery.sizeOf(context).width >= 720 &&
+          MediaQuery.textScalerOf(context).scale(16) <= 24);
+
+  void _quickStart(LongPressStartDetails d) {
+    if (_open ||
+        !_anchored ||
+        widget.onChanged == null ||
+        widget.options.isEmpty) {
+      return;
+    }
+    final box = _fieldKey.currentContext!.findRenderObject() as RenderBox;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final origin = overlayBox.globalToLocal(box.localToGlobal(Offset.zero));
+    final media = MediaQuery.of(context);
+    _quickRow = math.max(64, media.textScaler.scale(24) * 1.4 + 24);
+    final height = math.min(
+      _quickRow * widget.options.length,
+      overlayBox.size.height - media.padding.vertical - 32,
+    );
+    _quickPanel = Rect.fromLTWH(
+      origin.dx.clamp(
+        16,
+        math.max(16, overlayBox.size.width - box.size.width - 16),
+      ),
+      (origin.dy - selected * _quickRow).clamp(
+        media.padding.top + 16,
+        math.max(
+          media.padding.top + 16,
+          overlayBox.size.height - media.padding.bottom - height - 16,
+        ),
+      ),
+      math.min(box.size.width, overlayBox.size.width - 32),
+      height,
+    );
+    _candidate = selected;
+    _open = true;
+    _history = LocalHistoryEntry(
+      onRemove: () {
+        _history = null;
+        _quickEnd(false);
+      },
+    );
+    ModalRoute.of(context)?.addLocalHistoryEntry(_history!);
+    _quick = OverlayEntry(
+      builder: (c) {
+        final t = context.brockmann;
+        return Positioned.fromRect(
+          rect: _quickPanel,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: t.duration(c, 160),
+            builder: (c, value, child) => Opacity(opacity: value, child: child),
+            child: Material(
+              color: t.surface,
+              shape: Border.all(color: t.lineStrong),
+              child: ListView.builder(
+                controller: _quickScroll,
+                padding: EdgeInsets.zero,
+                itemExtent: _quickRow,
+                itemCount: widget.options.length,
+                itemBuilder: (c, i) => AnimatedContainer(
+                  duration: t.duration(c, 100),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: AlignmentDirectional.centerStart,
+                  color: i == _candidate ? t.accent : t.surface,
+                  child: BrockmannText(
+                    widget.options[i],
+                    role: BrockmannType.heading,
+                    color: i == _candidate
+                        ? (t.accent.computeLuminance() > .45
+                              ? Colors.black
+                              : Colors.white)
+                        : t.foreground,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    Overlay.of(context).insert(_quick!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_quick == null || !_quickScroll.hasClients) return;
+      _quickScroll.jumpTo(
+        (selected * _quickRow - (origin.dy - _quickPanel.top)).clamp(
+          0,
+          _quickScroll.position.maxScrollExtent,
+        ),
+      );
+      _quickMove(d.globalPosition);
+    });
+    _edgeTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!_quickScroll.hasClients || _quick == null) return;
+      final y = _finger.dy;
+      final direction = y < _quickPanel.top + 36
+          ? -1
+          : y > _quickPanel.bottom - 36
+          ? 1
+          : 0;
+      if (direction != 0 &&
+          _finger.dx >= _quickPanel.left &&
+          _finger.dx <= _quickPanel.right) {
+        _quickScroll.jumpTo(
+          (_quickScroll.offset + direction * 5).clamp(
+            0,
+            _quickScroll.position.maxScrollExtent,
+          ),
+        );
+        _updateCandidate();
+      }
+    });
+  }
+
+  void _quickMove(Offset global) {
+    if (_quick == null) return;
+    final box = Overlay.of(context).context.findRenderObject() as RenderBox;
+    _finger = box.globalToLocal(global);
+    _updateCandidate();
+  }
+
+  void _updateCandidate() {
+    final next = _quickPanel.contains(_finger) && _quickScroll.hasClients
+        ? ((_finger.dy - _quickPanel.top + _quickScroll.offset) / _quickRow)
+              .floor()
+              .clamp(0, widget.options.length - 1)
+        : null;
+    if (_candidate != next) {
+      _candidate = next;
+      _quick?.markNeedsBuild();
+    }
+  }
+
+  void _quickEnd(bool commit) {
+    if (_quick == null) return;
+    final result = _candidate;
+    _edgeTimer?.cancel();
+    _quick?.remove();
+    _quick?.dispose();
+    _quick = null;
+    final history = _history;
+    _history = null;
+    history?.remove();
+    _open = false;
+    if (commit && result != null && result != selected && mounted) {
+      BrockmannFeedbackScope.of(context)?.selection();
+      widget.onChanged?.call(result);
+    }
+  }
+
+  @override
+  void dispose() {
+    _quickEnd(false);
+    _quickScroll.dispose();
+    super.dispose();
+  }
+
   Rect? _valueBounds() {
     final field = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     final value = _valueKey.currentContext?.findRenderObject() as RenderBox?;
@@ -338,48 +508,56 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
       maintainSize: true,
       maintainState: true,
       maintainAnimation: true,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: BrockmannPressable(
-          key: _fieldKey,
-          label:
-              '${widget.label}, ${widget.options.isEmpty ? 'No options' : widget.options[selected]}',
-          onPressed: enabled ? _show : null,
-          builder: (c, p) => Container(
-            constraints: const BoxConstraints(minHeight: 80),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            foregroundDecoration: BoxDecoration(
-              border: Border.all(
-                color: !enabled
-                    ? Colors.transparent
-                    : p
-                    ? t.foreground
-                    : _hover
-                    ? t.lineStrong
-                    : Colors.transparent,
-                width: 2,
+      child: GestureDetector(
+        onLongPressStart: enabled && _anchored ? _quickStart : null,
+        onLongPressMoveUpdate: enabled && _anchored
+            ? (d) => _quickMove(d.globalPosition)
+            : null,
+        onLongPressEnd: (_) => _quickEnd(true),
+        onLongPressCancel: () => _quickEnd(false),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hover = true),
+          onExit: (_) => setState(() => _hover = false),
+          child: BrockmannPressable(
+            key: _fieldKey,
+            label:
+                '${widget.label}, ${widget.options.isEmpty ? 'No options' : widget.options[selected]}',
+            onPressed: enabled ? _show : null,
+            builder: (c, p) => Container(
+              constraints: const BoxConstraints(minHeight: 80),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              foregroundDecoration: BoxDecoration(
+                border: Border.all(
+                  color: !enabled
+                      ? Colors.transparent
+                      : p
+                      ? t.foreground
+                      : _hover
+                      ? t.lineStrong
+                      : Colors.transparent,
+                  width: 2,
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BrockmannText(
-                  widget.label,
-                  role: BrockmannType.label,
-                  color: enabled ? t.secondary : t.disabled,
-                ),
-                const SizedBox(height: 4),
-                BrockmannText(
-                  widget.options.isEmpty
-                      ? 'No options'
-                      : widget.options[selected],
-                  key: _valueKey,
-                  role: BrockmannType.value,
-                  color: enabled ? t.foreground : t.disabled,
-                ),
-              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BrockmannText(
+                    widget.label,
+                    role: BrockmannType.label,
+                    color: enabled ? t.secondary : t.disabled,
+                  ),
+                  const SizedBox(height: 4),
+                  BrockmannText(
+                    widget.options.isEmpty
+                        ? 'No options'
+                        : widget.options[selected],
+                    key: _valueKey,
+                    role: BrockmannType.value,
+                    color: enabled ? t.foreground : t.disabled,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

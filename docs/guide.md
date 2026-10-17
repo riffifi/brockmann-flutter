@@ -88,3 +88,11 @@ Colour planes, dials, sliders and range handles own pointers that start inside t
 Handle pickup has one native haptic after a 160 ms hold or initial drag, provided a feedback controller is installed and haptics are allowed. There are no repeated drag ticks or sounds.
 
 Search presents the query with a magnifier and × clear button. Sheets and context menus keep visible action labels and render icons when explicitly supplied by their entries. Basic core symbols (+/−, ×, dots, arrows and carets) are used where they improve recognition. Chips offer an accessible × remove action; the application removes the item from state. The showcase’s Inputs page uses typographic hierarchy and no bottom icon navbar.
+
+
+Slider handles also expand and take the accent while held, easing back on release.
+Anchored choices support holding the field and dragging through the list without
+lifting: release inside to choose, outside to cancel. Hold near an edge to scroll.
+Date changes and settled time-wheel changes provide haptic-only detents.
+Context actions consistently open the large typographic bottom sheet.
+See [Metro interaction guidance](metro-audit.md) for sources and design decisions.
