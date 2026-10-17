@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
 import 'theme.dart';
@@ -283,6 +284,7 @@ class BrockmannSlider extends StatefulWidget {
     this.step,
     this.defaultValue,
     this.formatValue,
+    this.trackGradient,
   }) : assert(max > min),
        assert(value >= min && value <= max);
   final String label;
@@ -290,12 +292,14 @@ class BrockmannSlider extends StatefulWidget {
   final double? step, defaultValue;
   final ValueChanged<double>? onChanged;
   final String Function(double)? formatValue;
+  final Gradient? trackGradient;
   @override
   State<BrockmannSlider> createState() => _BrockmannSliderState();
 }
 
 class _BrockmannSliderState extends State<BrockmannSlider> {
   bool _direct = false;
+  double _grabOffset = 0;
   String get readout =>
       widget.formatValue?.call(widget.value) ??
       widget.value.toStringAsFixed(widget.max - widget.min <= 10 ? 2 : 0);
@@ -384,7 +388,9 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
                     widget.onChanged?.call(
                       quantize(
                         widget.min +
-                            (p.dx / b.maxWidth).clamp(0, 1) *
+                            ((p.dx - 12 - _grabOffset) /
+                                        math.max(1, b.maxWidth - 24))
+                                    .clamp(0, 1) *
                                 (widget.max - widget.min),
                       ),
                     );
@@ -392,6 +398,21 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
 
                   return GestureDetector(
                     behavior: HitTestBehavior.opaque,
+                    dragStartBehavior: DragStartBehavior.down,
+                    onTapDown: enabled
+                        ? (d) {
+                            final thumb =
+                                12 +
+                                (widget.value - widget.min) /
+                                    (widget.max - widget.min) *
+                                    (b.maxWidth - 24);
+                            _grabOffset =
+                                (d.localPosition.dx - thumb).abs() <= 24
+                                ? d.localPosition.dx - thumb
+                                : 0;
+                            set(d.localPosition);
+                          }
+                        : null,
                     onTapUp: enabled
                         ? (d) {
                             set(d.localPosition);
@@ -401,7 +422,18 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
                           }
                         : null,
                     onHorizontalDragStart: enabled
-                        ? (d) => set(d.localPosition)
+                        ? (d) {
+                            final thumb =
+                                12 +
+                                (widget.value - widget.min) /
+                                    (widget.max - widget.min) *
+                                    (b.maxWidth - 24);
+                            _grabOffset =
+                                (d.localPosition.dx - thumb).abs() <= 24
+                                ? d.localPosition.dx - thumb
+                                : 0;
+                            set(d.localPosition);
+                          }
                         : null,
                     onHorizontalDragUpdate: enabled
                         ? (d) => set(d.localPosition)
@@ -420,6 +452,7 @@ class _BrockmannSliderState extends State<BrockmannSlider> {
                       width: double.infinity,
                       child: CustomPaint(
                         painter: _SliderPainter(
+                          gradient: widget.trackGradient,
                           value:
                               ((visual - widget.min) /
                                       (widget.max - widget.min))
@@ -449,36 +482,49 @@ class _SliderPainter extends CustomPainter {
     required this.zero,
     required this.theme,
     required this.enabled,
+    this.gradient,
   });
+  final Gradient? gradient;
   final double value, zero;
   final BrockmannThemeData theme;
   final bool enabled;
   @override
   void paint(Canvas c, Size s) {
     final y = s.height / 2;
+    c.save();
+    c.translate(12, 0);
+    s = Size(math.max(1, s.width - 24), s.height);
     c.drawRect(
       Rect.fromLTWH(0, y - 1, s.width, 2),
       Paint()..color = theme.lineStrong,
     );
+    if (gradient != null) {
+      c.drawRect(
+        Rect.fromLTWH(0, y - 4, s.width, 8),
+        Paint()
+          ..shader = gradient!.createShader(
+            Rect.fromLTWH(0, y - 4, s.width, 8),
+          ),
+      );
+    }
     final a = math.min(zero, value) * s.width,
         b = math.max(zero, value) * s.width;
+    if (gradient == null) {
+      c.drawRect(
+        Rect.fromLTWH(a, y - 3, b - a, 6),
+        Paint()..color = enabled ? theme.accent : theme.disabled,
+      );
+    }
     c.drawRect(
-      Rect.fromLTWH(a, y - 3, b - a, 6),
-      Paint()..color = enabled ? theme.accent : theme.disabled,
-    );
-    c.drawRect(
-      Rect.fromLTWH(
-        (value * s.width - 6).clamp(0, s.width - 12),
-        y - 14,
-        12,
-        28,
-      ),
+      Rect.fromLTWH(value * s.width - 6, y - 14, 12, 28),
       Paint()..color = enabled ? theme.foreground : theme.disabled,
     );
+    c.restore();
   }
 
   @override
   bool shouldRepaint(covariant _SliderPainter o) =>
+      o.gradient != gradient ||
       o.value != value ||
       o.theme != theme ||
       o.enabled != enabled ||
@@ -507,7 +553,25 @@ class BrockmannKnob extends StatefulWidget {
 }
 
 class _BrockmannKnobState extends State<BrockmannKnob> {
-  double _dragValue = 0;
+  final _dialKey = GlobalKey();
+  double _dragValue = 0, _angle = 0;
+  bool _radial = false;
+  Offset relative(Offset global) {
+    final box = _dialKey.currentContext!.findRenderObject() as RenderBox;
+    return box.globalToLocal(global) - box.size.center(Offset.zero);
+  }
+
+  double angle(Offset p) => math.atan2(p.dy, p.dx);
+  void tap(Offset global) {
+    final p = relative(global);
+    if (p.distance < 20) return;
+    final phase = (angle(p) - math.pi * .75 + math.pi * 2) % (math.pi * 2);
+    final unit = phase > math.pi * 1.5
+        ? (phase > math.pi * 1.75 ? 0.0 : 1.0)
+        : phase / (math.pi * 1.5);
+    widget.onChanged?.call(widget.min + unit * (widget.max - widget.min));
+  }
+
   bool _dragging = false;
   @override
   Widget build(BuildContext context) {
@@ -567,8 +631,13 @@ class _BrockmannKnobState extends State<BrockmannKnob> {
         },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
+          dragStartBehavior: DragStartBehavior.down,
+          onTapUp: enabled ? (d) => tap(d.globalPosition) : null,
           onPanStart: enabled
-              ? (_) {
+              ? (d) {
+                  final p = relative(d.globalPosition);
+                  _radial = p.distance >= 20;
+                  _angle = angle(p);
                   _dragValue = widget.value;
                   setState(() => _dragging = true);
                 }
@@ -577,10 +646,19 @@ class _BrockmannKnobState extends State<BrockmannKnob> {
           onPanCancel: () => setState(() => _dragging = false),
           onPanUpdate: enabled
               ? (d) {
+                  double delta;
+                  if (_radial) {
+                    final next = angle(relative(d.globalPosition));
+                    delta =
+                        (next - _angle + math.pi * 3) % (math.pi * 2) - math.pi;
+                    _angle = next;
+                    delta /= math.pi * 1.5;
+                  } else {
+                    delta = -d.delta.dy / 140;
+                  }
                   _dragValue =
-                      (_dragValue -
-                              d.delta.dy /
-                                  200 *
+                      (_dragValue +
+                              delta *
                                   (widget.max - widget.min) *
                                   (HardwareKeyboard.instance.isShiftPressed
                                       ? .1
@@ -598,8 +676,9 @@ class _BrockmannKnobState extends State<BrockmannKnob> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  width: 80,
-                  height: 80,
+                  key: _dialKey,
+                  width: 96,
+                  height: 96,
                   child: BrockmannMotion(
                     value: widget.value,
                     immediate: _dragging,

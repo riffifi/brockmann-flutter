@@ -11,3 +11,4 @@ export 'src/overlays.dart';
 export 'src/reorder.dart';
 export 'src/feedback.dart';
 export 'src/motion.dart';
+export 'src/inputs.dart';

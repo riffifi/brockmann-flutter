@@ -107,6 +107,9 @@ const pages = [
   'motion',
   'layout',
   'sound',
+  'inputs',
+  'pickers',
+  'icons',
 ];
 
 class Catalogue extends StatefulWidget {
@@ -132,10 +135,37 @@ class Catalogue extends StatefulWidget {
 }
 
 class _CatalogueState extends State<Catalogue> {
-  int page = 0, choice = 0, color = 11, companions = 0, variant = 0;
+  int page = 0, choice = 0, color = 11, companions = 0, variant = 2;
   bool enabled = true, vertical = false, busy = false;
   double amount = .64, tone = .4, weight = 400;
-  final schemes = windows8Palette();
+  final schemes = brockmannPalette();
+  Color customColour = const Color(0xff39a6a0);
+  bool? checked = true;
+  bool expanded = false;
+  String segment = 'week', quality = 'balanced';
+  RangeValues range = const RangeValues(.2, .75);
+  double quantity = 4;
+  DateTime date = DateTime(2026, 10, 18);
+  TimeOfDay time = const TimeOfDay(hour: 9, minute: 30);
+  final search = TextEditingController();
+  final sessionActions = const [
+    BrockmannMenuEntry(
+      value: 'rename',
+      label: 'Rename',
+      icon: BrockmannIcon.pencil,
+    ),
+    BrockmannMenuEntry(
+      value: 'duplicate',
+      label: 'Duplicate',
+      icon: BrockmannIcon.copy,
+    ),
+    BrockmannMenuEntry(
+      value: 'delete',
+      label: 'Delete',
+      icon: BrockmannIcon.trash,
+      destructive: true,
+    ),
+  ];
   final projectName = TextEditingController(text: 'untitled session');
   final notes = TextEditingController(
     text: 'Space is structure.\nWrite in your own language.',
@@ -143,6 +173,7 @@ class _CatalogueState extends State<Catalogue> {
   final validation = TextEditingController(text: '0');
   @override
   void dispose() {
+    search.dispose();
     projectName.dispose();
     notes.dispose();
     validation.dispose();
@@ -306,50 +337,36 @@ class _CatalogueState extends State<Catalogue> {
           BrockmannIconButton(icon: icon, label: icon.name, onPressed: () {}),
       ]),
     ]),
-    0 => section('a colour, a character', [
+    0 => section('colour as material', [
       note(
-        'The Windows 8 ribbon, adapted for fingers. The grid gives each scheme a full touch target; companions describe a scheme without adding competing accents to the interface.',
+        'A palette of deliberate choices, or a continuous colour field. Selection expands the tile and adds a contrast-safe check. Continuous controls follow touch immediately.',
       ),
-      BrockmannPicker(
-        label: 'presentation',
-        options: const ['ribbon', 'swatches', 'grid'],
-        selected: variant,
+      BrockmannSegmentedControl<int>(
+        options: const [2, 1],
+        value: variant,
         onChanged: (v) => setState(() => variant = v),
-      ),
-      BrockmannPicker(
-        label: 'companion colours',
-        options: const ['none', 'one', 'two', 'three'],
-        selected: companions,
-        onChanged: (v) => setState(() => companions = v),
-      ),
-      BrockmannSwitch(
-        label: 'vertical strip',
-        value: vertical,
-        onChanged: (v) => setState(() => vertical = v),
+        labelFor: (v) => v == 2 ? 'tiles' : 'strip',
       ),
       BrockmannColorPicker(
-        label: 'personal colour',
+        label: 'palette',
         schemes: schemes,
         selected: color,
-        companionCount: companions,
-        variant: BrockmannPaletteVariant.values[variant],
-        axis: vertical ? Axis.vertical : Axis.horizontal,
         onChanged: (v) => setState(() => color = v),
+        variant: BrockmannPaletteVariant.values[variant],
       ),
       BrockmannButton(
         label: 'use ${schemes[color].name}',
-        style: BrockmannButtonStyle.primary,
         onPressed: () => widget.onAccent(schemes[color].primary),
       ),
-      const BrockmannColorPicker(
-        label: 'custom schemes / disabled',
-        schemes: [
-          BrockmannColorScheme('paper', Color(0xffc6b324)),
-          BrockmannColorScheme('blueprint', Color(0xff375c9c)),
-          BrockmannColorScheme('graphite', Color(0xff666666)),
-        ],
-        selected: 1,
-        onChanged: null,
+      BrockmannColorField(
+        label: 'compose a colour',
+        value: customColour,
+        showAlpha: true,
+        onChanged: (v) => setState(() => customColour = v),
+      ),
+      BrockmannButton(
+        label: 'use composed colour',
+        onPressed: () => widget.onAccent(customColour.withValues(alpha: 1)),
       ),
     ]),
     2 => section('type is the interface', [
@@ -580,6 +597,160 @@ class _CatalogueState extends State<Catalogue> {
         label: 'vertical / dB',
         db: -12,
         axis: Axis.vertical,
+      ),
+    ]),
+    8 => section('inputs for real applications', [
+      BrockmannSearchField(controller: search, label: 'search instruments'),
+      BrockmannCheckbox(
+        label: 'include automation',
+        value: checked,
+        tristate: true,
+        onChanged: (v) => setState(() => checked = v),
+      ),
+      BrockmannRadioGroup<String>(
+        label: 'render quality',
+        options: const ['draft', 'balanced', 'master'],
+        value: quality,
+        onChanged: (v) => setState(() => quality = v),
+        labelFor: (v) => v,
+      ),
+      BrockmannSegmentedControl<String>(
+        options: const ['day', 'week', 'month'],
+        value: segment,
+        onChanged: (v) => setState(() => segment = v),
+        labelFor: (v) => v,
+      ),
+      BrockmannRangeSlider(
+        label: 'play region',
+        values: range,
+        onChanged: (v) => setState(() => range = v),
+      ),
+      BrockmannStepper(
+        label: 'voices',
+        value: quantity,
+        min: 1,
+        max: 16,
+        onChanged: (v) => setState(() => quantity = v),
+      ),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          BrockmannChip(
+            label: 'synth',
+            selected: checked == true,
+            onPressed: () => setState(() => checked = checked != true),
+          ),
+          BrockmannChip(
+            label: 'removable',
+            onDeleted: () => showBrockmannToast(context, 'Tag removed'),
+          ),
+          const BrockmannBadge(label: 'local'),
+        ],
+      ),
+      BrockmannAccordion(
+        title: 'Advanced settings',
+        expanded: expanded,
+        onChanged: (v) => setState(() => expanded = v),
+        child: note(
+          'Keep secondary settings nearby without overwhelming the primary workflow.',
+        ),
+      ),
+      BrockmannBanner(
+        title: 'Project saved',
+        message: 'All changes are stored on this device.',
+        icon: BrockmannIcon.check,
+      ),
+      const BrockmannEmptyState(
+        title: 'Nothing queued',
+        message: 'Add an instrument to start building.',
+        icon: BrockmannIcon.folder,
+      ),
+      BrockmannNavigationBar(
+        destinations: const [
+          BrockmannDestination('studio', BrockmannIcon.settings),
+          BrockmannDestination('library', BrockmannIcon.folder),
+          BrockmannDestination('account', BrockmannIcon.user),
+        ],
+        selected: choice.clamp(0, 2),
+        onChanged: (v) => setState(() => choice = v),
+      ),
+    ]),
+    9 => section('choose without friction', [
+      BrockmannPicker(
+        label: 'full-page choice',
+        options: const ['studio', 'library', 'settings', 'about'],
+        selected: choice.clamp(0, 3),
+        presentation: BrockmannPickerPresentation.fullPage,
+        onChanged: (v) => setState(() => choice = v),
+      ),
+      BrockmannPicker(
+        label: 'anchored choice',
+        options: const ['studio', 'library', 'settings', 'about'],
+        selected: choice.clamp(0, 3),
+        presentation: BrockmannPickerPresentation.anchored,
+        onChanged: (v) => setState(() => choice = v),
+      ),
+      BrockmannButton(
+        label: 'date / ${date.year}-${date.month}-${date.day}',
+        onPressed: () async {
+          final v = await showBrockmannDatePicker(
+            context,
+            initialDate: date,
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2040),
+          );
+          if (mounted && v != null) setState(() => date = v);
+        },
+      ),
+      BrockmannButton(
+        label: 'time / ${time.format(context)}',
+        onPressed: () async {
+          final v = await showBrockmannTimePicker(context, initialTime: time);
+          if (mounted && v != null) setState(() => time = v);
+        },
+      ),
+      BrockmannButton(
+        label: 'action sheet',
+        onPressed: () async {
+          final v = await showBrockmannActionSheet(
+            context,
+            title: 'Session actions',
+            entries: sessionActions,
+          );
+          if (context.mounted && v != null) showBrockmannToast(context, v);
+        },
+      ),
+      BrockmannContextMenu<String>(
+        entries: sessionActions,
+        onSelected: (v) => showBrockmannToast(context, v),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          color: context.brockmann.surface,
+          child: const BrockmannText(
+            'Hold here for a context menu. Right-click works too.',
+          ),
+        ),
+      ),
+    ]),
+    10 => section('one icon language', [
+      note(
+        'Phosphor regular at 24 dp; bold at small sizes. Every icon button has a spoken label and a 48 dp target.',
+      ),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final icon in BrockmannIcon.values)
+            Tooltip(
+              message: icon.name,
+              child: BrockmannIconButton(
+                icon: icon,
+                label: icon.name,
+                onPressed: () => showBrockmannToast(context, icon.name),
+              ),
+            ),
+        ],
       ),
     ]),
     _ => section('sound + touch', [

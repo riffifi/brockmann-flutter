@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'foundation.dart';
 import 'feedback.dart';
-import 'motion.dart';
+import 'controls.dart';
 
 @immutable
 class BrockmannColorScheme {
@@ -76,8 +76,35 @@ List<BrockmannColorScheme> windows8Palette() {
       .toList(growable: false);
 }
 
-/// Touch-sized colour schemes, including a scaled Windows 8 ribbon.
-class BrockmannColorPicker extends StatefulWidget {
+/// A curated palette with balanced lightness and distinct hue families.
+List<BrockmannColorScheme> brockmannPalette() => [
+  for (final (name, hex) in const [
+    ('ink', 0xff24282d),
+    ('stone', 0xff858b92),
+    ('paper', 0xffe6e1d8),
+    ('rose', 0xffdf6679),
+    ('vermilion', 0xffe16b45),
+    ('amber', 0xffd9a441),
+    ('citron', 0xffb7c95a),
+    ('fern', 0xff62a67c),
+    ('lagoon', 0xff39a6a0),
+    ('azure', 0xff529dcc),
+    ('iris', 0xff8275ca),
+    ('orchid', 0xffba77af),
+  ])
+    BrockmannColorScheme(
+      name,
+      Color(hex),
+      companions: [
+        Color.lerp(Color(hex), Colors.white, .55)!,
+        Color.lerp(Color(hex), Colors.black, .45)!,
+      ],
+    ),
+];
+
+/// Animated colour tiles. [BrockmannPaletteVariant.ribbon] is retained as an
+/// alias for the scrolling strip; historical Windows styling is no longer used.
+class BrockmannColorPicker extends StatelessWidget {
   const BrockmannColorPicker({
     super.key,
     required this.label,
@@ -98,376 +125,326 @@ class BrockmannColorPicker extends StatefulWidget {
   final Axis axis;
   final double verticalExtent;
   @override
-  State<BrockmannColorPicker> createState() => _BrockmannColorPickerState();
-}
-
-class _BrockmannColorPickerState extends State<BrockmannColorPicker> {
-  int get _selected => widget.schemes.isEmpty
-      ? 0
-      : widget.selected.clamp(0, widget.schemes.length - 1);
-  final _scroll = ScrollController();
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
-  }
-
-  @override
-  void didUpdateWidget(BrockmannColorPicker old) {
-    super.didUpdateWidget(old);
-    if (old.selected != widget.selected ||
-        old.variant != widget.variant ||
-        old.axis != widget.axis) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
-    }
-  }
-
-  double get _step =>
-      widget.variant == BrockmannPaletteVariant.ribbon ? 48 : 56;
-  void _reveal() {
-    if (!mounted ||
-        widget.variant == BrockmannPaletteVariant.grid ||
-        !_scroll.hasClients) {
-      return;
-    }
-    final start = _selected * _step,
-        end = start + _step,
-        offset = _scroll.offset,
-        extent = _scroll.position.viewportDimension;
-    final target =
-        (start < offset
-                ? start
-                : end > offset + extent
-                ? end - extent
-                : offset)
-            .clamp(0.0, _scroll.position.maxScrollExtent);
-    if (context.brockmann.motionReduced(context)) {
-      _scroll.jumpTo(target);
-    } else {
-      _scroll.animateTo(
-        target,
-        duration: context.brockmann.duration(context, 180),
-        curve: brockmannEaseOut,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _choose(int i) {
-    if (widget.onChanged == null || i == _selected) return;
-    BrockmannFeedbackScope.play(context, BrockmannSound.select);
-    widget.onChanged!(i);
-  }
-
-  Widget _cell(int i, Size size) {
-    final scheme = widget.schemes[i];
-    final description =
-        '${scheme.name} ${scheme.hex}${scheme.companions.take(widget.companionCount).map((c) => ', companion ${colorHex(c)}').join()}';
-    return SizedBox(
-      width: size.width,
-      height: size.height,
-      child: Semantics(
-        checked: i == _selected,
-        inMutuallyExclusiveGroup: true,
-        child: BrockmannPressable(
-          label: description,
-          button: false,
-          onPressed: widget.onChanged == null ? null : () => _choose(i),
-          tooltip: description,
-          builder: (c, p) => const SizedBox.expand(),
-        ),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
     final t = context.brockmann;
-    final selected = widget.schemes.isEmpty ? null : widget.schemes[_selected];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        BrockmannText(
-          widget.label,
-          role: BrockmannType.label,
-          color: widget.onChanged == null ? t.disabled : t.secondary,
-        ),
-        const SizedBox(height: 4),
-        BrockmannText(
-          selected == null
-              ? 'No colours'
-              : '${selected.name} / ${selected.hex}',
-          role: BrockmannType.monoValue,
-        ),
-        const SizedBox(height: 12),
-        if (selected != null)
-          LayoutBuilder(
-            builder: (c, b) {
-              final grid = widget.variant == BrockmannPaletteVariant.grid,
-                  vertical = widget.axis == Axis.vertical && !grid;
-              final columns = grid
-                  ? math.max(1, (b.maxWidth / 56).floor())
-                  : widget.schemes.length;
-              final ribbon = widget.variant == BrockmannPaletteVariant.ribbon;
-              final crossExtent = ribbon
-                  ? (vertical
-                        ? 176.0
-                        : widget.companionCount == 0
-                        ? 72.0
-                        : 88.0)
-                  : 88.0;
-              final size = grid
-                  ? Size(
-                      columns * 56,
-                      ((widget.schemes.length + columns - 1) ~/ columns) * 72,
-                    )
-                  : vertical
-                  ? Size(
-                      math.min(b.maxWidth, ribbon ? 288 : 144),
-                      widget.schemes.length * _step,
-                    )
-                  : Size(widget.schemes.length * _step, crossExtent);
-              final visual = BrockmannMotion(
-                value: _selected.toDouble(),
-                milliseconds: 180,
-                builder: (c, position) => CustomPaint(
-                  painter: _PalettePainter(
-                    schemes: widget.schemes,
-                    variant: widget.variant,
-                    vertical: vertical,
-                    companions: widget.companionCount,
-                    columns: columns,
-                    position: t.motionReduced(c)
-                        ? _selected.toDouble()
-                        : position,
-                    theme: t,
-                    enabled: widget.onChanged != null,
-                  ),
-                  child: SizedBox(
-                    width: size.width,
-                    height: size.height,
-                    child: grid
-                        ? Wrap(
-                            children: [
-                              for (var i = 0; i < widget.schemes.length; i++)
-                                _cell(i, const Size(56, 72)),
-                            ],
-                          )
-                        : vertical
-                        ? Column(
-                            children: [
-                              for (var i = 0; i < widget.schemes.length; i++)
-                                _cell(i, Size(size.width, _step)),
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              for (var i = 0; i < widget.schemes.length; i++)
-                                _cell(i, Size(_step, crossExtent)),
-                            ],
-                          ),
+    final current = schemes.isEmpty
+        ? null
+        : schemes[selected.clamp(0, schemes.length - 1)];
+    Widget tile(int i, double width) {
+      final scheme = schemes[i], active = identical(current, scheme);
+      final ink =
+          BrockmannThemeData.contrast(Colors.white, scheme.primary) >= 4.5
+          ? Colors.white
+          : Colors.black;
+      return SizedBox(
+        width: width,
+        height: 64,
+        child: Semantics(
+          selected: active,
+          inMutuallyExclusiveGroup: true,
+          child: BrockmannPressable(
+            label: '${scheme.name} ${scheme.hex}',
+            onPressed: onChanged == null
+                ? null
+                : () {
+                    if (!active) {
+                      BrockmannFeedbackScope.play(
+                        context,
+                        BrockmannSound.select,
+                      );
+                      onChanged!(i);
+                    }
+                  },
+            builder: (c, pressed) => Center(
+              child: AnimatedContainer(
+                key: ValueKey('brockmann-colour-tile-$i'),
+                width: active ? 58 : 50,
+                height: active ? 58 : 50,
+                duration: t.duration(c, 180),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: active ? t.foreground : Colors.transparent,
+                    width: 1,
                   ),
                 ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(
+                      alpha: onChanged == null ? .4 : 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: active
+                        ? BrockmannGlyph(
+                            BrockmannIcon.check,
+                            color: ink,
+                            size: 20,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        BrockmannText(label, role: BrockmannType.label, color: t.secondary),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            if (current != null) ...[
+              Container(width: 24, height: 24, color: current.primary),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: BrockmannText(
+                current == null
+                    ? 'No colours'
+                    : '${current.name} / ${current.hex}',
+                role: BrockmannType.monoValue,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (current != null)
+          LayoutBuilder(
+            builder: (c, box) {
+              if (variant == BrockmannPaletteVariant.grid) {
+                final columns = math.max(1, (box.maxWidth / 64).floor());
+                return Wrap(
+                  children: [
+                    for (var i = 0; i < schemes.length; i++)
+                      tile(i, box.maxWidth / columns),
+                  ],
+                );
+              }
+              return SizedBox(
+                height: axis == Axis.vertical ? verticalExtent : 64,
+                child: SingleChildScrollView(
+                  scrollDirection: axis,
+                  child: axis == Axis.vertical
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var i = 0; i < schemes.length; i++)
+                              tile(i, 64),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            for (var i = 0; i < schemes.length; i++)
+                              tile(i, 64),
+                          ],
+                        ),
+                ),
               );
-              return grid
-                  ? Align(alignment: Alignment.centerLeft, child: visual)
-                  : SizedBox(
-                      height: vertical ? widget.verticalExtent : crossExtent,
-                      child: SingleChildScrollView(
-                        key: ribbon
-                            ? const ValueKey('brockmann-colour-ribbon')
-                            : null,
-                        controller: _scroll,
-                        scrollDirection: widget.axis,
-                        child: visual,
-                      ),
-                    );
             },
+          ),
+        if (current != null && companionCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final colour in current.companions.take(companionCount))
+                  Semantics(
+                    label: 'Companion ${colorHex(colour)}',
+                    child: Container(width: 32, height: 32, color: colour),
+                  ),
+              ],
+            ),
           ),
       ],
     );
   }
 }
 
-class _PalettePainter extends CustomPainter {
-  _PalettePainter({
-    required this.schemes,
-    required this.variant,
-    required this.vertical,
-    required this.companions,
-    required this.columns,
-    required this.position,
-    required this.theme,
-    required this.enabled,
+/// Arbitrary colour input with a saturation/value plane, hue and optional alpha.
+/// Direct input is immediate; external value changes move the marker over 180ms.
+class BrockmannColorField extends StatefulWidget {
+  const BrockmannColorField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.showAlpha = false,
   });
-  final List<BrockmannColorScheme> schemes;
-  final BrockmannPaletteVariant variant;
-  final bool vertical, enabled;
-  final int companions, columns;
-  final double position;
-  final BrockmannThemeData theme;
-  Color muted(Color c) => enabled ? c : Color.lerp(c, theme.background, .65)!;
+  final String label;
+  final Color value;
+  final ValueChanged<Color>? onChanged;
+  final bool showAlpha;
   @override
-  void paint(Canvas c, Size size) {
-    c.save();
-    if (variant == BrockmannPaletteVariant.ribbon && vertical) {
-      c.scale(2);
-      size = Size(size.width / 2, size.height / 2);
-    }
-    _paint(c, size);
-    c.restore();
+  State<BrockmannColorField> createState() => _BrockmannColorFieldState();
+}
+
+class _BrockmannColorFieldState extends State<BrockmannColorField> {
+  double _hue = 0;
+  bool _direct = false;
+  HSVColor get hsv {
+    final c = HSVColor.fromColor(widget.value);
+    return c.withHue(c.saturation < .001 ? _hue : c.hue);
   }
 
-  void _paint(Canvas c, Size size) {
-    final ribbon = variant == BrockmannPaletteVariant.ribbon,
-        grid = variant == BrockmannPaletteVariant.grid;
-    final step = ribbon
-        ? (vertical ? 24.0 : size.width / math.max(1, schemes.length))
-        : 56.0;
-    final band = ribbon && !vertical ? 40.0 : 20.0;
-    final bandTop = companions == 0 ? 16.0 : 32.0;
-    Rect cell(int i) => grid
-        ? Rect.fromLTWH((i % columns) * 56, (i ~/ columns) * 72, 56, 72)
-        : vertical
-        ? Rect.fromLTWH(0, i * step, size.width, step)
-        : Rect.fromLTWH(i * step, 0, step, 88);
-    for (var i = 0; i < schemes.length; i++) {
-      final r = cell(i), s = schemes[i];
-      final main = ribbon
-          ? (vertical
-                ? Rect.fromLTWH(24, r.top, 20, step)
-                : Rect.fromLTWH(r.left, bandTop, step, band))
-          : (vertical
-                ? Rect.fromLTWH(12, r.top + 12, 32, 32)
-                : Rect.fromLTWH(r.left + 12, r.top + 28, 32, 32));
-      c.drawRect(
-        main,
-        Paint()..color = muted(ribbon ? theme.surface : s.primary),
-      );
-      if (ribbon) {
-        c.save();
-        c.clipRect(main);
-        c.drawRect(
-          Rect.fromCenter(
-            center: main.center,
-            width: vertical ? 16 : 40,
-            height: vertical ? 16 : 40,
+  void emit(HSVColor colour) {
+    _hue = colour.hue;
+    widget.onChanged?.call(colour.toColor());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colour = hsv,
+        t = context.brockmann,
+        enabled = widget.onChanged != null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: widget.value,
+                border: Border.all(color: t.line),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BrockmannText(widget.label, role: BrockmannType.label),
+                  BrockmannText(
+                    colorHex(widget.value),
+                    role: BrockmannType.monoValue,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (c, box) {
+            void set(Offset p) {
+              setState(() => _direct = true);
+              emit(
+                colour
+                    .withSaturation((p.dx / box.maxWidth).clamp(0, 1))
+                    .withValue((1 - p.dy / 192).clamp(0, 1)),
+              );
+            }
+
+            return Semantics(
+              label: '${widget.label} saturation and brightness',
+              child: GestureDetector(
+                key: const ValueKey('brockmann-colour-plane'),
+                onTapUp: (_) => setState(() => _direct = false),
+                behavior: HitTestBehavior.opaque,
+                onTapDown: enabled ? (d) => set(d.localPosition) : null,
+                onPanStart: enabled ? (d) => set(d.localPosition) : null,
+                onPanUpdate: enabled ? (d) => set(d.localPosition) : null,
+                onPanEnd: (_) => setState(() => _direct = false),
+                onPanCancel: () => setState(() => _direct = false),
+                child: SizedBox(
+                  height: 192,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: HSVColor.fromAHSV(
+                              1,
+                              colour.hue,
+                              1,
+                              1,
+                            ).toColor(),
+                            gradient: const LinearGradient(
+                              colors: [Colors.white, Colors.transparent],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Colors.black],
+                            ),
+                          ),
+                        ),
+                      ),
+                      AnimatedPositioned(
+                        duration: _direct ? Duration.zero : t.duration(c, 180),
+                        curve: Curves.easeOutCubic,
+                        left: colour.saturation * (box.maxWidth - 24),
+                        top: (1 - colour.value) * 168,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black, spreadRadius: 1),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        BrockmannSlider(
+          label: 'hue',
+          value: colour.hue / 360,
+          onChanged: enabled ? (v) => emit(colour.withHue(v * 359.999)) : null,
+          trackGradient: const LinearGradient(
+            colors: [
+              Color(0xffff0000),
+              Color(0xffffff00),
+              Color(0xff00ff00),
+              Color(0xff00ffff),
+              Color(0xff0000ff),
+              Color(0xffff00ff),
+              Color(0xffff0000),
+            ],
           ),
-          Paint()..color = muted(s.primary),
-        );
-        c.restore();
-      } else {
-        c.drawRect(
-          main,
-          Paint()
-            ..color = theme.line
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1,
-        );
-      }
-      for (var j = 0; j < math.min(companions, s.companions.length); j++) {
-        final a = ribbon
-            ? (vertical
-                  ? Rect.fromLTWH(50 + j * 8, r.center.dy - 3, 6, 6)
-                  : Rect.fromLTWH(
-                      r.left + 1 + j * step / 3,
-                      22,
-                      math.min(6, step / 4),
-                      math.min(6, step / 4),
-                    ))
-            : (vertical
-                  ? Rect.fromLTWH(52 + j * 16, r.top + 22, 12, 12)
-                  : Rect.fromLTWH(r.left + 4 + j * 16, r.top + 10, 12, 12));
-        c.drawRect(a, Paint()..color = muted(s.companions[j]));
-      }
-    }
-    if (schemes.isEmpty) return;
-    final p = position.clamp(0.0, schemes.length - 1.0);
-    final r = Rect.lerp(cell(p.floor()), cell(p.ceil()), p - p.floor())!;
-    final stroke = Paint()
-      ..color = enabled ? theme.foreground : theme.disabled
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    if (ribbon) {
-      c.drawRect(
-        vertical
-            ? Rect.fromLTWH(22, 0, 24, size.height)
-            : Rect.fromLTWH(.5, bandTop - 1, size.width - 1, band + 2),
-        Paint()
-          ..color = theme.lineStrong
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-      final top = Path(), bottom = Path();
-      if (vertical) {
-        top
-          ..moveTo(10, r.center.dy - 4)
-          ..lineTo(10, r.center.dy + 4)
-          ..lineTo(17, r.center.dy)
-          ..close();
-        final x = companions == 0 ? 50.0 : 56.0 + companions * 8;
-        bottom
-          ..moveTo(x + 7, r.center.dy - 4)
-          ..lineTo(x + 7, r.center.dy + 4)
-          ..lineTo(x, r.center.dy)
-          ..close();
-      } else {
-        const y = 0.0;
-        top
-          ..moveTo(r.center.dx - 4, y)
-          ..lineTo(r.center.dx + 4, y)
-          ..lineTo(r.center.dx, y + 7)
-          ..close();
-        bottom
-          ..moveTo(r.center.dx - 4, bandTop + band + 15)
-          ..lineTo(r.center.dx + 4, bandTop + band + 15)
-          ..lineTo(r.center.dx, bandTop + band + 8)
-          ..close();
-      }
-      c.drawPath(top, stroke);
-      c.drawPath(bottom, stroke);
-    } else if (variant == BrockmannPaletteVariant.grid) {
-      c.drawRect(r.deflate(2), stroke..strokeWidth = 2);
-    } else {
-      final first = Path(), second = Path();
-      if (vertical) {
-        first
-          ..moveTo(2, r.center.dy - 4)
-          ..lineTo(9, r.center.dy)
-          ..lineTo(2, r.center.dy + 4);
-        final x = companions == 0 ? 46.0 : 52.0 + companions * 16;
-        second
-          ..moveTo(x + 7, r.center.dy - 4)
-          ..lineTo(x, r.center.dy)
-          ..lineTo(x + 7, r.center.dy + 4);
-      } else {
-        first
-          ..moveTo(r.center.dx - 4, r.top)
-          ..lineTo(r.center.dx, r.top + 7)
-          ..lineTo(r.center.dx + 4, r.top);
-        second
-          ..moveTo(r.center.dx - 4, r.top + 70)
-          ..lineTo(r.center.dx, r.top + 63)
-          ..lineTo(r.center.dx + 4, r.top + 70);
-      }
-      c.drawPath(first, stroke);
-      c.drawPath(second, stroke);
-    }
+        ),
+        BrockmannSlider(
+          label: 'saturation',
+          value: colour.saturation,
+          onChanged: enabled ? (v) => emit(colour.withSaturation(v)) : null,
+        ),
+        BrockmannSlider(
+          label: 'brightness',
+          value: colour.value,
+          onChanged: enabled ? (v) => emit(colour.withValue(v)) : null,
+        ),
+        if (widget.showAlpha)
+          BrockmannSlider(
+            label: 'opacity',
+            value: widget.value.a,
+            onChanged: enabled
+                ? (v) => widget.onChanged!(widget.value.withValues(alpha: v))
+                : null,
+          ),
+      ],
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _PalettePainter old) =>
-      old.position != position ||
-      old.variant != variant ||
-      old.vertical != vertical ||
-      old.companions != companions ||
-      old.columns != columns ||
-      old.theme != theme ||
-      old.enabled != enabled ||
-      old.schemes != schemes;
 }

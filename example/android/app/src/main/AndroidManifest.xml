@@ -3,7 +3,8 @@
         android:label="Brockmann"
         android:enableOnBackInvokedCallback="true"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_brockmann">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

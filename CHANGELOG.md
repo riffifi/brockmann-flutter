@@ -1,3 +1,11 @@
+## 0.2.0 (unreleased)
+
+- Replace historical ribbon styling with animated palette tiles and a saturation/brightness editor with hue and optional alpha.
+- Add full-page/anchored dropdown presentation, Android predictive-back routes, directional scroll-edge stretch, adaptive and monochrome launcher layers.
+- Improve dial arc/centre interaction and slider grab offset; fix stretched vertical meter geometry.
+- Add checkbox, radio group, segmented control, range slider, stepper, chip, accordion, badge, banner, empty state, search and bottom navigation.
+- Add typed context menus, action sheets, date/time pickers, 28 Phosphor icons in two weights, and three new showcase pages.
+
 ## 0.1.0
 
 - Android-first Flutter library and separate eight-page showcase.
@@ -17,3 +25,4 @@
 - Restore reference ribbon composition with a fitted full palette and scrub input; finger-controlled turnstile progress retains staggered page entry.
 - Keep ribbon columns large while scrolling overflow; square samples fill the band height and its container reserves only marker/companion space.
 - Replace competing tinted column edges with single neutral ribbon gutters and clip samples to their cells; add a pixel-level colour separation check.
+- Restore the reference ribbon’s continuous tinted columns and smaller centered bright squares, preserving readable scale through overflow scrolling.

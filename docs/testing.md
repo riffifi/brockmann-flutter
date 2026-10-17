@@ -1,31 +1,31 @@
 # Validation record
 
-Validated on 17 October 2026 with Flutter 3.47.4 / Dart 3.13.3.
+Validated on 18 October 2026 with Flutter 3.47.4 / Dart 3.13.3.
 
 ## Local checks
 
 - `flutter analyze`: no issues.
-- `flutter test` in the library: 27 passing tests.
+- `flutter test` in the library: 36 passing tests.
 - `flutter test` in the showcase: nine passing tests. Each catalogue page is sampled through intermediate animation frames at 320 and 412 dp, text scale 1 and 2, in both themes. A separate check verifies that editing survives navigation away and back.
 - Android arm64 profile APK builds successfully with the native SoundPool and Activity-aware haptic plugin.
 
-The library checks cover contrast, toggle reversal and drag commitment, active-tween continuity and idle scheduling, staggered entry, reduced spatial motion, retained pivot options, anchored text carry, first-step keyboard focus, early selection cancellation, overflowing lists, rapid page interruption, finger-scrubbed rotation and release continuity, fixed-size ribbon samples, pixel-checked neutral gutters and overflow scrolling, palette variants, flat reorder, independent audio/haptics, admission, lifecycle cancellation and native method-channel arguments.
+The library checks cover contrast, two-way toggle/drag input, motion interruption, retained navigation, anchored text carry and keyboard focus, explicit phone dropdown presentation, predictive-back cancellation and completion, palette/HSV selection, dial arc and centre input, slider thumb capture, fixed vertical meter width, narrow/large-text input layouts, both weights of all 45 icons, typed context-menu results/disabled entries, horizontal/vertical edge feedback, reorder, audio/haptic admission and lifecycle cancellation.
 
 ## Physical Pixel 7
 
-Connected device: Pixel 7, Android 17 / API 37. Profile-mode integration visits all eight pages, samples the animation frame by frame, selects from a full-page dropdown, preloads native sound without playing audio, and requests a short confirmation haptic. The run passed. Android accepted the haptic request; the exact physical feel remains a user/device judgment.
+Connected device: Pixel 7, Android 17 / API 37. Profile-mode integration visits all eleven pages, samples the animation frame by frame, edits the colour plane, drags a dial, selects from anchored and full-page dropdowns, preloads native sound without playing audio, and requests a short confirmation haptic. The run passed. Android accepted the haptic request; the exact physical feel remains a user/device judgment.
 
-Recorded profile sample (before the ribbon sizing and finger-scrubbed turnstile refinements):
+Latest profile sample (the full catalogue plus colour, dial and dropdown interactions):
 
 | Measurement | Result |
 | --- | --- |
-| Frames collected | 346 |
-| Build duration, p95 | 6.639 ms |
-| Raster duration, p95 | 15.704 ms |
+| Frames collected | 501 |
+| Build duration, p95 | 10.901 ms |
+| Raster duration, p95 | 18.643 ms |
 | Native sound bank | Ready |
 | Haptic request accepted | True |
 
-The first five frames are omitted from percentile calculations. This is a single end-to-end sample with cold page/glyph work and the phone's normal background workload, not a controlled sustained-refresh benchmark. After adding page repaint boundaries, raster p95 measured 15.704 ms compared with 17.049 ms in the previous sample; workload variation also affects this comparison. The latest p95 fits a 60 Hz frame budget of 16.67 ms; individual frames can still exceed it, and this does not establish smooth rendering at every refresh rate.
+The first five frames are omitted from percentile calculations. This is one end-to-end sample with cold pages, SVGs, gradients, popup construction and the phone’s normal background workload, not a controlled sustained-refresh benchmark. Raster p95 exceeds the 16.67 ms budget of a 60 Hz display in this sample; these results do not establish smooth rendering at every refresh rate. Predictive-back cancel/commit is additionally exercised through Flutter’s back-gesture channel in widget tests. The profile integration validates route selection and on-device touch handling, not every possible physical system-gesture path.
 
 ## Reproduce
 

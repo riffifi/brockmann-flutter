@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 
 import 'feedback.dart';
 
@@ -90,6 +91,15 @@ class BrockmannThemeData extends ThemeExtension<BrockmannThemeData> {
           surface: background,
           onSurface: foreground,
         ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+      },
+    ),
     extensions: [this],
     dividerColor: line,
     disabledColor: disabled,
@@ -240,7 +250,10 @@ class BrockmannScrollBehavior extends MaterialScrollBehavior {
     BuildContext context,
     Widget child,
     ScrollableDetails details,
-  ) => child;
+  ) => StretchingOverscrollIndicator(
+    axisDirection: details.direction,
+    child: child,
+  );
 }
 
 /// Installs themes, localization/navigation infrastructure and Android scrolling.

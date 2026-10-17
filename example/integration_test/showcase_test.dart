@@ -2,6 +2,7 @@ import 'package:brockmann/brockmann.dart';
 import 'package:brockmann_example/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/material.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -30,6 +31,50 @@ void main() {
         }
         expect(tester.takeException(), isNull, reason: pages[page]);
       }
+      tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(0);
+      await tester.pumpAndSettle();
+      final field = find.byType(BrockmannColorField);
+      final plane = find.byKey(const ValueKey('brockmann-colour-plane'));
+      await tester.ensureVisible(plane);
+      final oldColour = tester.widget<BrockmannColorField>(field).value;
+      await tester.tapAt(tester.getRect(plane).center);
+      await tester.pumpAndSettle();
+      expect(tester.widget<BrockmannColorField>(field).value, isNot(oldColour));
+      tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(1);
+      await tester.pumpAndSettle();
+      final dial = find.byType(BrockmannKnob).first;
+      await tester.ensureVisible(dial);
+      final dialPaint = find
+          .descendant(of: dial, matching: find.byType(CustomPaint))
+          .first;
+      final centre = tester.getCenter(dialPaint);
+      final dialBefore = tester.widget<BrockmannKnob>(dial).value;
+      final gesture = await tester.startGesture(centre + const Offset(36, 0));
+      await gesture.moveTo(centre + const Offset(0, 36));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.widget<BrockmannKnob>(dial).value, greaterThan(dialBefore));
+      tester.widget<BrockmannPivot>(find.byType(BrockmannPivot)).onChanged!(9);
+      await tester.pumpAndSettle();
+      final anchored = find.byType(BrockmannPicker).last;
+      await tester.ensureVisible(anchored);
+      await tester.tap(anchored);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ListView),
+          matching: find.text('about'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<BrockmannPicker>(find.byType(BrockmannPicker).last)
+            .selected,
+        3,
+      );
+      expect(tester.takeException(), isNull);
       final backend = AndroidSoundBackend();
       expect(await backend.prepare(), isTrue);
       await backend.stop(); // Preload is tested without emitting a sound.

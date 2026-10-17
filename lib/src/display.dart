@@ -331,11 +331,19 @@ class _BrockmannMeterState extends State<BrockmannMeter>
   Widget build(BuildContext context) => Semantics(
     label: widget.label,
     value: '${widget.db.toStringAsFixed(1)} decibels',
-    child: SizedBox(
-      width: widget.axis == Axis.vertical ? 4 : double.infinity,
-      height: widget.axis == Axis.vertical ? widget.extent : 4,
-      child: CustomPaint(
-        painter: _MeterPainter(widget.db, peak, widget.axis, context.brockmann),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: widget.axis == Axis.vertical ? 4 : double.infinity,
+        height: widget.axis == Axis.vertical ? widget.extent : 4,
+        child: CustomPaint(
+          painter: _MeterPainter(
+            widget.db,
+            peak,
+            widget.axis,
+            context.brockmann,
+          ),
+        ),
       ),
     ),
   );

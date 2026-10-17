@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
+import 'foundation.dart';
 import 'controls.dart';
 import 'feedback.dart';
 
@@ -212,3 +213,203 @@ class _CommandDialogState extends State<_CommandDialog> {
     );
   }
 }
+
+/// One typed menu definition can be used by a context menu or action sheet.
+@immutable
+class BrockmannMenuEntry<T> {
+  const BrockmannMenuEntry({
+    required this.value,
+    required this.label,
+    this.icon,
+    this.enabled = true,
+    this.destructive = false,
+  });
+  final T value;
+  final String label;
+  final BrockmannIcon? icon;
+  final bool enabled, destructive;
+}
+
+Future<T?> showBrockmannContextMenu<T>(
+  BuildContext context, {
+  required Offset position,
+  required List<BrockmannMenuEntry<T>> entries,
+}) {
+  final t = context.brockmann;
+  final overlay =
+      Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+  final local = overlay.globalToLocal(position);
+  return showMenu<T>(
+    context: context,
+    position: RelativeRect.fromRect(
+      local & const Size(1, 1),
+      Offset.zero & overlay.size,
+    ),
+    color: t.surface,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    shape: Border.all(color: t.line),
+    menuPadding: const EdgeInsets.symmetric(vertical: 8),
+    items: [
+      for (final entry in entries)
+        PopupMenuItem<T>(
+          value: entry.value,
+          enabled: entry.enabled,
+          height: 48,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (entry.icon != null) ...[
+                BrockmannGlyph(
+                  entry.icon!,
+                  color: entry.destructive ? t.danger : t.secondary,
+                ),
+                const SizedBox(width: 16),
+              ],
+              Flexible(
+                child: BrockmannText(
+                  entry.label,
+                  color: !entry.enabled
+                      ? t.disabled
+                      : entry.destructive
+                      ? t.danger
+                      : t.foreground,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
+class BrockmannContextMenu<T> extends StatelessWidget {
+  const BrockmannContextMenu({
+    super.key,
+    required this.entries,
+    required this.onSelected,
+    required this.child,
+  });
+  final List<BrockmannMenuEntry<T>> entries;
+  final ValueChanged<T> onSelected;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    Future<void> open(Offset p) async {
+      final result = await showBrockmannContextMenu(
+        context,
+        position: p,
+        entries: entries,
+      );
+      if (result != null && context.mounted) onSelected(result);
+    }
+
+    return GestureDetector(
+      onLongPressStart: (d) => open(d.globalPosition),
+      onSecondaryTapDown: (d) => open(d.globalPosition),
+      child: child,
+    );
+  }
+}
+
+Future<T?> showBrockmannActionSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<BrockmannMenuEntry<T>> entries,
+}) {
+  final t = context.brockmann;
+  return showModalBottomSheet<T>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    backgroundColor: t.surface,
+    elevation: 0,
+    shape: Border(top: BorderSide(color: t.line)),
+    builder: (c) => ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(c).height * .8),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BrockmannText(title, role: BrockmannType.heading),
+              const SizedBox(height: 16),
+              for (final entry in entries)
+                BrockmannPressable(
+                  label: entry.label,
+                  onPressed: entry.enabled
+                      ? () => Navigator.pop(c, entry.value)
+                      : null,
+                  builder: (c, p) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      children: [
+                        if (entry.icon != null) ...[
+                          BrockmannGlyph(
+                            entry.icon!,
+                            color: entry.destructive ? t.danger : t.secondary,
+                          ),
+                          const SizedBox(width: 16),
+                        ],
+                        Expanded(
+                          child: BrockmannText(
+                            entry.label,
+                            color: !entry.enabled
+                                ? t.disabled
+                                : entry.destructive
+                                ? t.danger
+                                : t.foreground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<DateTime?> showBrockmannDatePicker(
+  BuildContext context, {
+  required DateTime initialDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+}) => showDatePicker(
+  context: context,
+  initialDate: initialDate,
+  firstDate: firstDate,
+  lastDate: lastDate,
+  builder: (c, child) => Theme(
+    data: Theme.of(c).copyWith(
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: c.brockmann.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(),
+      ),
+    ),
+    child: child!,
+  ),
+);
+Future<TimeOfDay?> showBrockmannTimePicker(
+  BuildContext context, {
+  required TimeOfDay initialTime,
+}) => showTimePicker(
+  context: context,
+  initialTime: initialTime,
+  builder: (c, child) => Theme(
+    data: Theme.of(c).copyWith(
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: c.brockmann.surface,
+        shape: const RoundedRectangleBorder(),
+      ),
+    ),
+    child: child!,
+  ),
+);

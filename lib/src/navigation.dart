@@ -235,6 +235,8 @@ class _BrockmannPivotState extends State<BrockmannPivot> {
 }
 
 /// A controlled choice with a full-page phone list or an anchored wide-screen menu.
+enum BrockmannPickerPresentation { adaptive, fullPage, anchored }
+
 class BrockmannPicker extends StatefulWidget {
   const BrockmannPicker({
     super.key,
@@ -242,7 +244,9 @@ class BrockmannPicker extends StatefulWidget {
     required this.options,
     required this.selected,
     required this.onChanged,
+    this.presentation = BrockmannPickerPresentation.adaptive,
   }) : assert(selected >= 0);
+  final BrockmannPickerPresentation presentation;
   final String label;
   final List<String> options;
   final int selected;
@@ -278,7 +282,11 @@ class _BrockmannPickerState extends State<BrockmannPicker> {
     final value = _valueKey.currentContext!.findRenderObject()! as RenderBox;
     final t = context.brockmann;
     final media = MediaQuery.of(context);
-    final wide = media.size.width >= 720 && media.textScaler.scale(16) <= 24;
+    final wide =
+        widget.presentation == BrockmannPickerPresentation.anchored ||
+        (widget.presentation == BrockmannPickerPresentation.adaptive &&
+            media.size.width >= 720 &&
+            media.textScaler.scale(16) <= 24);
     final feedback = BrockmannFeedbackScope.of(context);
     final original = selected;
     final route = _PickerRoute(
@@ -416,7 +424,7 @@ class _PickerExit {
   final double start, opacity;
 }
 
-class _PickerRoute extends PopupRoute<int> {
+class _PickerRoute extends PageRoute<int> {
   _PickerRoute({
     required this.label,
     required this.options,
@@ -428,6 +436,10 @@ class _PickerRoute extends PopupRoute<int> {
     required this.theme,
     required this.onSelected,
   });
+  @override
+  bool get opaque => fullPage;
+  @override
+  bool get maintainState => true;
   final String label;
   final List<String> options;
   final int selected;
@@ -741,28 +753,15 @@ class _PickerRoute extends PopupRoute<int> {
         ),
       );
     }
-    return AnimatedBuilder(
-      animation: animation,
-      child: child,
-      builder: (c, child) {
-        final exiting = animation.status == AnimationStatus.reverse;
-        final f = exiting
-            ? 1 - brockmannInExpo.transform(1 - animation.value)
-            : brockmannOutExpo.transform((animation.value * 2).clamp(0, 1));
-        return IgnorePointer(
-          ignoring: _closing,
-          child: ExcludeFocus(
-            excluding: _closing,
-            child: Opacity(
-              opacity: f,
-              child: Transform.translate(
-                offset: Offset(0, theme.reduceMotion ? 0 : 24 * (1 - f)),
-                child: child,
-              ),
-            ),
-          ),
-        );
-      },
+    if (theme.reduceMotion) {
+      return FadeTransition(opacity: animation, child: child);
+    }
+    return const PredictiveBackPageTransitionsBuilder().buildTransitions(
+      this,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
     );
   }
 }
