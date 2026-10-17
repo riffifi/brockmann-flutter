@@ -347,12 +347,11 @@ class _PalettePainter extends CustomPainter {
                 : Rect.fromLTWH(r.left + 12, r.top + 28, 32, 32));
       c.drawRect(
         main,
-        Paint()
-          ..color = muted(
-            ribbon ? Color.lerp(s.primary, Colors.black, .62)! : s.primary,
-          ),
+        Paint()..color = muted(ribbon ? theme.surface : s.primary),
       );
       if (ribbon) {
+        c.save();
+        c.clipRect(main);
         c.drawRect(
           Rect.fromCenter(
             center: main.center,
@@ -361,6 +360,7 @@ class _PalettePainter extends CustomPainter {
           ),
           Paint()..color = muted(s.primary),
         );
+        c.restore();
       } else {
         c.drawRect(
           main,
