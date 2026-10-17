@@ -60,7 +60,12 @@ void main() {
       (w) => w is BrockmannChip && w.label == 'removable',
     );
     await tester.ensureVisible(tag);
-    await tester.tap(find.descendant(of: tag, matching: find.text('remove')));
+    await tester.tap(
+      find.descendant(
+        of: tag,
+        matching: find.bySemanticsLabel('Remove removable'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(tag, findsNothing);
   });

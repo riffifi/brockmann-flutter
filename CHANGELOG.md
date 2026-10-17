@@ -1,5 +1,7 @@
 ## 0.2.0 (unreleased)
 
+- Use familiar core glyphs consistently across search, clear, removal, calendar navigation and horizontal/vertical overflow menus, following Microsoft icon/command principles while keeping typography primary.
+
 - Give direct-input surfaces ownership over page swipes and surrounding scrolling; add a reusable interaction region and one handle-pickup haptic.
 - Replace Material calendar/time dialogs with a custom calendar and 24-hour numeral wheels, including draft confirmation, bounds and accessibility.
 - Make core sheets, menus, search, disclosure and picker navigation typography-led; remove the bottom navbar showcase and make tag deletion real.

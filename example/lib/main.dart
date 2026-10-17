@@ -698,6 +698,17 @@ class _CatalogueState extends State<Catalogue> {
           if (context.mounted && v != null) showBrockmannToast(context, v);
         },
       ),
+      Row(
+        children: [
+          const Expanded(
+            child: BrockmannText('session actions', role: BrockmannType.value),
+          ),
+          BrockmannOverflowMenu<String>(
+            entries: sessionActions,
+            onSelected: (v) => showBrockmannToast(context, v),
+          ),
+        ],
+      ),
       BrockmannContextMenu<String>(
         entries: sessionActions,
         onSelected: (v) => showBrockmannToast(context, v),

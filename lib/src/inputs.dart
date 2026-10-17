@@ -362,13 +362,10 @@ class BrockmannChip extends StatelessWidget {
             ),
           ),
           if (onDeleted != null)
-            BrockmannPressable(
+            BrockmannIconButton(
+              icon: BrockmannIcon.x,
               label: 'Remove $label',
               onPressed: onDeleted,
-              builder: (c, p) => const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                child: BrockmannText('remove', role: BrockmannType.caption),
-              ),
             ),
         ],
       ),
@@ -497,18 +494,19 @@ class BrockmannSearchField extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           labelStyle: BrockmannType.label.style(color: t.secondary),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.all(12),
+            child: BrockmannGlyph(BrockmannIcon.search),
+          ),
           suffixIcon: value.text.isEmpty
               ? null
-              : TextButton(
+              : BrockmannIconButton(
+                  icon: BrockmannIcon.x,
+                  label: 'Clear $label',
                   onPressed: () {
                     controller.clear();
                     onChanged?.call('');
                   },
-                  style: TextButton.styleFrom(
-                    foregroundColor: t.foreground,
-                    minimumSize: const Size(64, 48),
-                  ),
-                  child: const Text('clear'),
                 ),
           border: UnderlineInputBorder(borderSide: BorderSide(color: t.line)),
           enabledBorder: UnderlineInputBorder(
@@ -554,7 +552,11 @@ class BrockmannBanner extends StatelessWidget {
           ),
         ),
         if (onClose != null)
-          TextButton(onPressed: onClose, child: const Text('dismiss')),
+          BrockmannIconButton(
+            icon: BrockmannIcon.x,
+            label: 'Dismiss $title',
+            onPressed: onClose,
+          ),
       ],
     ),
   );

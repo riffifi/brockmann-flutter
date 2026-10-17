@@ -175,4 +175,50 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'Horizontal and vertical overflow glyphs open labelled typed actions',
+    (tester) async {
+      for (final vertical in [false, true]) {
+        int? result;
+        await tester.pumpWidget(
+          BrockmannApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: BrockmannOverflowMenu<int>(
+                  vertical: vertical,
+                  entries: const [
+                    BrockmannMenuEntry(
+                      value: 1,
+                      label: 'new',
+                      icon: BrockmannIcon.plus,
+                    ),
+                    BrockmannMenuEntry(
+                      value: 2,
+                      label: 'close',
+                      icon: BrockmannIcon.x,
+                    ),
+                  ],
+                  onSelected: (v) => result = v,
+                ),
+              ),
+            ),
+          ),
+        );
+        final button = find.byType(BrockmannIconButton).first;
+        expect(
+          tester.widget<BrockmannIconButton>(button).icon,
+          vertical ? BrockmannIcon.dotsThreeVertical : BrockmannIcon.dotsThree,
+        );
+        expect(tester.getSize(button).shortestSide, greaterThanOrEqualTo(48));
+        await tester.tap(find.bySemanticsLabel('More actions'));
+        await tester.pumpAndSettle();
+        expect(find.text('new'), findsOneWidget);
+        expect(find.text('close'), findsOneWidget);
+        await tester.tap(find.text('new'));
+        await tester.pumpAndSettle();
+        expect(result, 1);
+      }
+    },
+  );
 }

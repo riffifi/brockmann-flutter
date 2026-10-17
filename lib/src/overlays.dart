@@ -235,7 +235,7 @@ Future<T?> showBrockmannContextMenu<T>(
   BuildContext context, {
   required Offset position,
   required List<BrockmannMenuEntry<T>> entries,
-  bool showIcons = false,
+  bool showIcons = true,
 }) {
   final t = context.brockmann;
   final overlay =
@@ -318,7 +318,7 @@ Future<T?> showBrockmannActionSheet<T>(
   BuildContext context, {
   required String title,
   required List<BrockmannMenuEntry<T>> entries,
-  bool showIcons = false,
+  bool showIcons = true,
 }) {
   final t = context.brockmann;
   return showModalBottomSheet<T>(
@@ -350,7 +350,7 @@ Future<T?> showBrockmannActionSheet<T>(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
                       children: [
-                        if (showIcons && entry.icon != null) ...[
+                        if (entry.icon != null && showIcons) ...[
                           BrockmannGlyph(
                             entry.icon!,
                             color: entry.destructive ? t.danger : t.secondary,
@@ -485,3 +485,40 @@ Future<T?> _showTypedPicker<T>(
   transitionBuilder: (c, a, _, child) =>
       FadeTransition(opacity: a, child: child),
 );
+
+/// A discoverable overflow affordance; both orientations use the same typed
+/// context-menu actions and retain accessible labels and a 48 dp target.
+class BrockmannOverflowMenu<T> extends StatelessWidget {
+  const BrockmannOverflowMenu({
+    super.key,
+    required this.entries,
+    required this.onSelected,
+    this.label = 'More actions',
+    this.vertical = false,
+    this.showIcons = true,
+  });
+  final List<BrockmannMenuEntry<T>> entries;
+  final ValueChanged<T> onSelected;
+  final String label;
+  final bool vertical;
+  final bool showIcons;
+  @override
+  Widget build(BuildContext context) => Builder(
+    builder: (buttonContext) => BrockmannIconButton(
+      icon: vertical
+          ? BrockmannIcon.dotsThreeVertical
+          : BrockmannIcon.dotsThree,
+      label: label,
+      onPressed: () async {
+        final box = buttonContext.findRenderObject() as RenderBox;
+        final result = await showBrockmannContextMenu<T>(
+          context,
+          position: box.localToGlobal(Offset(0, box.size.height)),
+          entries: entries,
+          showIcons: showIcons,
+        );
+        if (context.mounted && result != null) onSelected(result);
+      },
+    ),
+  );
+}

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 import 'foundation.dart';
-import 'controls.dart';
 import 'navigation.dart';
 import 'interaction.dart';
 
@@ -60,18 +59,17 @@ class _BrockmannCalendarState extends State<BrockmannCalendar> {
           locale.formatMonthYear(_month),
           role: BrockmannType.heading,
         ),
-        Wrap(
-          spacing: 16,
-          runSpacing: 4,
+        Row(
           children: [
-            BrockmannButton(
-              label: 'previous month',
-              style: BrockmannButtonStyle.text,
+            BrockmannIconButton(
+              icon: BrockmannIcon.caretLeft,
+              label: 'Previous month',
               onPressed: previous.isBefore(first) ? null : () => move(-1),
             ),
-            BrockmannButton(
-              label: 'next month',
-              style: BrockmannButtonStyle.text,
+            const Spacer(),
+            BrockmannIconButton(
+              icon: BrockmannIcon.caretRight,
+              label: 'Next month',
               onPressed: next.isAfter(last) ? null : () => move(1),
             ),
           ],

@@ -106,12 +106,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(result, draft);
   });
-  testWidgets('Typography leads search, action sheets and context menus', (
+  testWidgets('Familiar glyphs support labelled search and menu actions', (
     tester,
   ) async {
     final controller = TextEditingController(text: 'query');
     addTearDown(controller.dispose);
     late BuildContext context;
+    Finder glyph(BrockmannIcon icon) =>
+        find.byWidgetPredicate((w) => w is BrockmannGlyph && w.icon == icon);
     await tester.pumpWidget(
       BrockmannApp(
         home: Scaffold(
@@ -124,14 +126,21 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(BrockmannGlyph), findsNothing);
-    await tester.tap(find.text('clear'));
+    expect(glyph(BrockmannIcon.search), findsOneWidget);
+    expect(glyph(BrockmannIcon.x), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Clear search'));
     await tester.pumpAndSettle();
     expect(controller.text, isEmpty);
+    expect(glyph(BrockmannIcon.x), findsNothing);
     showBrockmannActionSheet(
       context,
       title: 'session',
       entries: const [
+        BrockmannMenuEntry(
+          value: 'add',
+          label: 'add',
+          icon: BrockmannIcon.plus,
+        ),
         BrockmannMenuEntry(
           value: 'copy',
           label: 'copy',
@@ -140,24 +149,27 @@ void main() {
       ],
     );
     await tester.pumpAndSettle();
-    expect(find.byType(BrockmannGlyph), findsNothing);
+    expect(glyph(BrockmannIcon.plus), findsOneWidget);
+    expect(glyph(BrockmannIcon.copy), findsOneWidget);
     expect(find.text('copy'), findsOneWidget);
     await tester.tap(find.text('copy'));
     await tester.pumpAndSettle();
     showBrockmannContextMenu(
       context,
       position: const Offset(40, 200),
+      showIcons: false,
       entries: const [
         BrockmannMenuEntry(
-          value: 'copy',
-          label: 'copy',
-          icon: BrockmannIcon.copy,
+          value: 'add',
+          label: 'add',
+          icon: BrockmannIcon.plus,
         ),
       ],
     );
     await tester.pumpAndSettle();
-    expect(find.byType(BrockmannGlyph), findsNothing);
-    await tester.tap(find.text('copy'));
+    expect(glyph(BrockmannIcon.plus), findsNothing);
+    expect(find.text('add'), findsOneWidget);
+    await tester.tap(find.text('add'));
     await tester.pumpAndSettle();
   });
   testWidgets('Calendar and time editor fit 320 dp at 200 percent text', (
