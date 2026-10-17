@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import 'theme.dart';
 
@@ -142,13 +143,38 @@ class BrockmannPageSwitcher extends StatefulWidget {
 }
 
 class _OutgoingPage {
-  const _OutgoingPage(this.key, this.child, this.back);
+  const _OutgoingPage(
+    this.key,
+    this.child,
+    this.back,
+    this.offset,
+    this.exitDelta,
+  );
   final Key key;
   final Widget child;
   final bool back;
+  final double offset, exitDelta;
 }
 
-class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher> {
+class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher>
+    with SingleTickerProviderStateMixin {
+  late final _slide = AnimationController.unbounded(vsync: this)
+    ..addListener(() {
+      if (mounted) setState(() {});
+    });
+  bool _swipeCommit = false;
+  double _width = 0;
+  void _settle() => _slide.animateTo(
+    0,
+    duration: context.brockmann.duration(context, 240),
+    curve: brockmannOutExpo,
+  );
+  @override
+  void dispose() {
+    _slide.dispose();
+    super.dispose();
+  }
+
   final _outgoing = <_OutgoingPage>[];
   Key _current = UniqueKey();
   bool _animateEntrance = false;
@@ -158,59 +184,97 @@ class _BrockmannPageSwitcherState extends State<BrockmannPageSwitcher> {
     super.didUpdateWidget(old);
     if (old.selected != widget.selected) {
       _outgoing.add(
-        _OutgoingPage(_current, old.child, widget.selected < old.selected),
+        _OutgoingPage(
+          _current,
+          old.child,
+          widget.selected < old.selected,
+          _slide.value,
+          _swipeCommit
+              ? (widget.selected > old.selected ? -_width : _width) -
+                    _slide.value
+              : 0,
+        ),
       );
       _current = UniqueKey();
-      _animateEntrance = true;
+      _animateEntrance = !_swipeCommit;
+      if (_swipeCommit) {
+        _slide.value += widget.selected > old.selected ? _width : -_width;
+        _swipeCommit = false;
+        _settle();
+      } else {
+        _slide.value = 0;
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    behavior: HitTestBehavior.translucent,
-    onHorizontalDragStart: widget.onChanged == null ? null : (_) => _drag = 0,
-    onHorizontalDragUpdate: widget.onChanged == null
-        ? null
-        : (d) => _drag += d.delta.dx,
-    onHorizontalDragEnd: widget.onChanged == null
-        ? null
-        : (d) {
-            if (_drag.abs() > 80 || d.velocity.pixelsPerSecond.dx.abs() > 600) {
-              final direction = d.velocity.pixelsPerSecond.dx.abs() > 600
-                  ? d.velocity.pixelsPerSecond.dx
-                  : _drag;
-              final next = (widget.selected + (direction < 0 ? 1 : -1)).clamp(
-                0,
-                widget.pageCount - 1,
-              );
-              if (next != widget.selected) widget.onChanged!(next);
-            }
-          },
-    child: ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          for (final page in _outgoing)
-            _PageTransition(
-              key: page.key,
-              exiting: true,
-              back: page.back,
-              animateEntrance: true,
-              onFinished: () {
-                if (mounted) setState(() => _outgoing.remove(page));
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      _width = constraints.maxWidth;
+      return GestureDetector(
+        dragStartBehavior: DragStartBehavior.down,
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: widget.onChanged == null
+            ? null
+            : (_) {
+                _drag = 0;
+                _slide.stop();
               },
-              child: page.child,
-            ),
-          _PageTransition(
-            key: _current,
-            exiting: false,
-            back: false,
-            animateEntrance: _animateEntrance,
-            child: widget.child,
+        onHorizontalDragUpdate: widget.onChanged == null
+            ? null
+            : (d) {
+                _drag += d.delta.dx;
+                _slide.value += d.delta.dx;
+              },
+        onHorizontalDragEnd: widget.onChanged == null
+            ? null
+            : (d) {
+                if (_drag.abs() > 80 ||
+                    d.velocity.pixelsPerSecond.dx.abs() > 600) {
+                  final direction = d.velocity.pixelsPerSecond.dx.abs() > 600
+                      ? d.velocity.pixelsPerSecond.dx
+                      : _drag;
+                  final next = (widget.selected + (direction < 0 ? 1 : -1))
+                      .clamp(0, widget.pageCount - 1);
+                  if (next != widget.selected) {
+                    _swipeCommit = true;
+                    widget.onChanged!(next);
+                    return;
+                  }
+                }
+                _settle();
+              },
+        onHorizontalDragCancel: _settle,
+        child: ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              for (final page in _outgoing)
+                _PageTransition(
+                  key: page.key,
+                  offset: page.offset,
+                  exitDelta: page.exitDelta,
+                  exiting: true,
+                  back: page.back,
+                  animateEntrance: true,
+                  onFinished: () {
+                    if (mounted) setState(() => _outgoing.remove(page));
+                  },
+                  child: page.child,
+                ),
+              _PageTransition(
+                key: _current,
+                offset: _slide.value,
+                exiting: false,
+                back: false,
+                animateEntrance: _animateEntrance,
+                child: widget.child,
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 }
 
@@ -222,7 +286,10 @@ class _PageTransition extends StatefulWidget {
     required this.animateEntrance,
     required this.child,
     this.onFinished,
+    this.offset = 0,
+    this.exitDelta = 0,
   });
+  final double offset, exitDelta;
   final bool exiting, back, animateEntrance;
   final Widget child;
   final VoidCallback? onFinished;
@@ -259,7 +326,10 @@ class _PageTransitionState extends State<_PageTransition>
     if (widget.exiting && !old.exiting) {
       _frozen = AlwaysStoppedAnimation(_entry.value);
       _entry.stop();
-      _exit.duration = context.brockmann.duration(context, 250);
+      _exit.duration = context.brockmann.duration(
+        context,
+        widget.exitDelta == 0 ? 250 : 240,
+      );
       _exit.forward(from: 0);
     }
   }
@@ -277,9 +347,15 @@ class _PageTransitionState extends State<_PageTransition>
     child: RepaintBoundary(child: widget.child),
     builder: (c, child) {
       final reduced = c.brockmann.motionReduced(c);
-      final t = brockmannInExpo.transform(_exit.value);
+      final swipeExit = widget.exitDelta != 0;
+      final t = (swipeExit ? brockmannOutExpo : brockmannInExpo).transform(
+        _exit.value,
+      );
       final matrix = Matrix4.identity()..setEntry(3, 2, -1 / 800);
-      if (widget.exiting && !reduced) {
+      if (!reduced) {
+        matrix.translateByDouble(widget.offset + widget.exitDelta * t, 0, 0, 1);
+      }
+      if (widget.exiting && !reduced && !swipeExit) {
         matrix.rotateY((widget.back ? -1 : 1) * 50 * math.pi / 180 * t);
       }
       return IgnorePointer(
@@ -292,7 +368,9 @@ class _PageTransitionState extends State<_PageTransition>
               alignment: Alignment.centerLeft,
               transform: matrix,
               child: Opacity(
-                opacity: widget.exiting ? 1 - t : (reduced ? _entry.value : 1),
+                opacity: widget.exiting
+                    ? (swipeExit && !reduced ? 1 : 1 - t)
+                    : (reduced ? _entry.value : 1),
                 child: TickerMode(
                   enabled: !widget.exiting,
                   child: _PageMotion(

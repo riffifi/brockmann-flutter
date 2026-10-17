@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
 import 'theme.dart';
@@ -27,6 +28,7 @@ class BrockmannPivot extends StatefulWidget {
 }
 
 class _BrockmannPivotState extends State<BrockmannPivot> {
+  double _swipe = 0;
   final _scroll = ScrollController();
   final _viewport = GlobalKey();
   List<GlobalKey> _keys = [];
@@ -57,10 +59,10 @@ class _BrockmannPivotState extends State<BrockmannPivot> {
     if (box == null || viewport == null) return;
     final x = box.localToGlobal(Offset.zero, ancestor: viewport).dx;
     final current = _scroll.offset;
-    final delta = x < 0
-        ? x
-        : x + box.size.width > viewport.size.width
-        ? x + box.size.width - viewport.size.width
+    final delta = x < 12
+        ? x - 12
+        : x + box.size.width > viewport.size.width - 12
+        ? x + box.size.width - (viewport.size.width - 12)
         : 0.0;
     final target = (current + delta).clamp(
       0.0,
@@ -103,100 +105,129 @@ class _BrockmannPivotState extends State<BrockmannPivot> {
       );
     }).toList();
     final height = sizes.fold(48.0, (h, s) => math.max(h, s.height));
-    final offset = sizes
-        .take(widget.selected)
-        .fold(0.0, (x, s) => x + s.width + 24);
+    final offset =
+        12.0 +
+        sizes.take(widget.selected).fold(0.0, (x, s) => x + s.width + 24);
     return SizedBox(
       key: _viewport,
       height: height,
-      child: SingleChildScrollView(
-        controller: _scroll,
-        scrollDirection: Axis.horizontal,
-        child: Stack(
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < widget.options.length; i++)
-                  Padding(
-                    key: _keys[i],
-                    padding: EdgeInsets.only(
-                      right: i == widget.options.length - 1 ? 0 : 24,
-                    ),
-                    child: SizedBox(
-                      width: sizes[i].width,
-                      height: height,
-                      child: BrockmannPressable(
-                        label: widget.options[i],
-                        selected: widget.selected == i,
-                        onKey: widget.onChanged == null
-                            ? null
-                            : (key) {
-                                final next = key == LogicalKeyboardKey.home
-                                    ? 0
-                                    : key == LogicalKeyboardKey.end
-                                    ? widget.options.length - 1
-                                    : (widget.selected +
-                                              (key ==
-                                                          LogicalKeyboardKey
-                                                              .arrowLeft ||
-                                                      key ==
-                                                          LogicalKeyboardKey
-                                                              .arrowUp
-                                                  ? -1
-                                                  : 1))
-                                          .clamp(0, widget.options.length - 1);
-                                if (next != widget.selected) {
-                                  BrockmannFeedbackScope.play(
-                                    context,
-                                    BrockmannSound.select,
-                                  );
-                                  widget.onChanged!(next);
-                                }
-                              },
-                        onPressed: widget.onChanged == null
-                            ? null
-                            : () {
-                                if (i != widget.selected) {
-                                  BrockmannFeedbackScope.play(
-                                    context,
-                                    BrockmannSound.select,
-                                  );
-                                  widget.onChanged!(i);
-                                }
-                              },
-                        builder: (c, p) => Align(
-                          alignment: Alignment.centerLeft,
-                          child: BrockmannText(
-                            widget.options[i],
-                            role: role,
-                            color: widget.onChanged == null
-                                ? t.disabled
-                                : i == widget.selected
-                                ? t.foreground
-                                : widget.compact
-                                ? t.secondary
-                                : t.disabled,
+      child: GestureDetector(
+        dragStartBehavior: DragStartBehavior.down,
+        onHorizontalDragStart: widget.compact || widget.onChanged == null
+            ? null
+            : (_) => _swipe = 0,
+        onHorizontalDragUpdate: widget.compact || widget.onChanged == null
+            ? null
+            : (d) => _swipe += d.delta.dx,
+        onHorizontalDragEnd: widget.compact || widget.onChanged == null
+            ? null
+            : (d) {
+                final velocity = d.velocity.pixelsPerSecond.dx;
+                if (_swipe.abs() < 36 && velocity.abs() < 400) return;
+                final direction = velocity.abs() > 400 ? velocity : _swipe;
+                final next = (widget.selected + (direction < 0 ? 1 : -1)).clamp(
+                  0,
+                  widget.options.length - 1,
+                );
+                if (next != widget.selected) {
+                  BrockmannFeedbackScope.play(context, BrockmannSound.select);
+                  widget.onChanged!(next);
+                }
+              },
+        child: SingleChildScrollView(
+          controller: _scroll,
+          physics: widget.compact ? null : const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          scrollDirection: Axis.horizontal,
+          child: Stack(
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < widget.options.length; i++)
+                    Padding(
+                      key: _keys[i],
+                      padding: EdgeInsets.only(
+                        right: i == widget.options.length - 1 ? 0 : 24,
+                      ),
+                      child: SizedBox(
+                        width: sizes[i].width,
+                        height: height,
+                        child: BrockmannPressable(
+                          label: widget.options[i],
+                          selected: widget.selected == i,
+                          onKey: widget.onChanged == null
+                              ? null
+                              : (key) {
+                                  final next = key == LogicalKeyboardKey.home
+                                      ? 0
+                                      : key == LogicalKeyboardKey.end
+                                      ? widget.options.length - 1
+                                      : (widget.selected +
+                                                (key ==
+                                                            LogicalKeyboardKey
+                                                                .arrowLeft ||
+                                                        key ==
+                                                            LogicalKeyboardKey
+                                                                .arrowUp
+                                                    ? -1
+                                                    : 1))
+                                            .clamp(
+                                              0,
+                                              widget.options.length - 1,
+                                            );
+                                  if (next != widget.selected) {
+                                    BrockmannFeedbackScope.play(
+                                      context,
+                                      BrockmannSound.select,
+                                    );
+                                    widget.onChanged!(next);
+                                  }
+                                },
+                          onPressed: widget.onChanged == null
+                              ? null
+                              : () {
+                                  if (i != widget.selected) {
+                                    BrockmannFeedbackScope.play(
+                                      context,
+                                      BrockmannSound.select,
+                                    );
+                                    widget.onChanged!(i);
+                                  }
+                                },
+                          builder: (c, p) => Align(
+                            alignment: Alignment.centerLeft,
+                            child: BrockmannText(
+                              widget.options[i],
+                              role: role,
+                              color: widget.onChanged == null
+                                  ? t.disabled
+                                  : i == widget.selected
+                                  ? t.foreground
+                                  : widget.compact
+                                  ? t.secondary
+                                  : t.disabled,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            if (widget.compact && widget.options.isNotEmpty)
-              AnimatedPositioned(
-                duration: t.duration(context, 180),
-                curve: brockmannEaseOut,
-                left: offset,
-                bottom: 0,
-                width: sizes[widget.selected].width,
-                height: 2,
-                child: ColoredBox(
-                  color: widget.onChanged == null ? t.disabled : t.accent,
-                ),
+                ],
               ),
-          ],
+              if (widget.compact && widget.options.isNotEmpty)
+                AnimatedPositioned(
+                  duration: t.duration(context, 180),
+                  curve: brockmannEaseOut,
+                  left: offset,
+                  bottom: 0,
+                  width: sizes[widget.selected].width,
+                  height: 2,
+                  child: ColoredBox(
+                    color: widget.onChanged == null ? t.disabled : t.accent,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

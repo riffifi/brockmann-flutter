@@ -341,7 +341,7 @@ class _PalettePainter extends CustomPainter {
       );
       if (ribbon) {
         c.drawRect(
-          Rect.fromCenter(center: main.center, width: 8, height: 8),
+          Rect.fromCenter(center: main.center, width: 20, height: 20),
           Paint()..color = muted(s.primary),
         );
       } else {
@@ -374,8 +374,8 @@ class _PalettePainter extends CustomPainter {
     if (ribbon) {
       c.drawRect(
         vertical
-            ? Rect.fromLTWH(22, 0, 24, size.height)
-            : Rect.fromLTWH(.5, 30, size.width - 1, 24),
+            ? Rect.fromLTWH(24, 0, 20, size.height)
+            : Rect.fromLTWH(.5, 32, size.width - 1, 20),
         Paint()
           ..color = theme.lineStrong
           ..style = PaintingStyle.stroke

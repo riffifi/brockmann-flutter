@@ -18,9 +18,9 @@ A switch animates both directions over 180 ms, with the desktop’s inset thumb 
 
 ## Navigation and dropdowns
 
-`BrockmannPivot` keeps all options in the layout. It scrolls only when needed and reveals the selected item with minimal movement; earlier destinations remain available by touch. Compact mode is appropriate for a catalogue with many destinations. Use short, distinct names.
+`BrockmannPivot` keeps all options in the layout. It scrolls only when needed and reveals the selected item with minimal movement; earlier destinations remain available by touch. Compact mode is appropriate for a catalogue with many destinations. Use short, distinct names. The title pivot reserves 12 dp at the beginning and end of its strip. A horizontal swipe selects one neighbouring destination on release instead of manually scrolling the title list; compact tabs retain direct scrolling.
 
-Rapid page changes preserve each outgoing page’s current position and give it the full 250 ms exit. Outgoing pages stop receiving input and accessibility focus; incoming content retains its staggered entry. Use stable page identities and let `BrockmannPageSwitcher` own the transition.
+Page swipes translate content one-for-one with horizontal finger movement, then finish a 240 ms horizontal slide or return on release. Child sliders retain their own horizontal gestures. Rapid changes by tapping preserve each outgoing page’s current position and give it the full 250 ms turnstile exit. Outgoing pages stop receiving input and accessibility focus; incoming content retains its staggered entry. Use stable page identities and let `BrockmannPageSwitcher` own the transition.
 
 `BrockmannPicker` opens a full selection page on phones, with the current item visible. Android Back or the visible close action cancels. A tap commits once and closes with a short fade/translation. On wider screens the bordered list is anchored around the selected row and clamped to the safe viewport. Enlarged text switches back to the full-page presentation. Closed controls have 16 dp of internal inset, separating the hover/press outline, label and value. The wide list reveals over 220 ms and closes over 200 ms, carrying a single selected label into its live field position even when the new value wraps. Early cancellation closes from the current geometry. Arrow keys, Home and End move the candidate with a 140 ms outline glide; Enter or Space commits, and Escape cancels. Candidate navigation never changes the model until commitment.
 
@@ -39,7 +39,7 @@ BrockmannColorPicker(
 )
 ```
 
-Grid is the mobile default. `swatches` gives a larger scrolling strip; `ribbon` scales the Windows 8 composition for mobile: 48 dp columns, a 40 dp tinted band, larger colour samples and opposing hollow triangles. Set `axis: Axis.vertical` for a vertical strip and `verticalExtent` to constrain its scrolling viewport. The horizontal ribbon occupies 176 dp including companions and markers. Both axes scroll while retaining 48 dp colour targets; use the grid when all colours should be visible together.
+Grid is the mobile default. `swatches` gives a larger scrolling strip; `ribbon` scales the Windows 8 composition for mobile: 48 dp columns, a 40 dp tinted band, square colour samples filling the band height and opposing hollow triangles. Set `axis: Axis.vertical` for a vertical strip and `verticalExtent` to constrain its scrolling viewport. The horizontal ribbon occupies 176 dp including companions and markers. Both axes scroll while retaining 48 dp colour targets; use the grid when all colours should be visible together.
 
 Schemes have a primary and up to three companion colours. Companions describe the selected palette; they do not automatically recolour the whole interface. Apply the selected primary to the app theme explicitly. Supply your own named schemes for a curated palette. Selection moves smoothly, remains visible, and includes a text name and hexadecimal value so colour alone never communicates selection.
 
