@@ -104,3 +104,53 @@ feather with 30 ms stagger, capped at 480 ms for the visible viewport. Closing
 takes 260 ms and preserves current row opacity/position before retreating.
 Android predictive Back drives the route progress directly and restores it on
 cancellation; reduced motion uses a short fade.
+
+## Layout and adaptive screens
+
+Brockmann layouts adapt to the width they are given, not only the window. `context.brockmannLayout` describes the window; `BrockmannResponsive(builder: (context, layout) => ...)` describes the region it sits in, so components inside a pane or split screen still choose correctly.
+
+| Window class | Width | Inset | Columns |
+| --- | --- | --- | --- |
+| `compact` | < 600 dp | 24 dp | 4 |
+| `medium` | 600–839 dp | 48 dp | 8 |
+| `expanded` | 840–1199 dp | 48 dp | 12 |
+| `large` | ≥ 1200 dp | 48 dp | 12 |
+
+`layout.value(compact: 1, expanded: 3)` picks per class, falling back to the next smaller class supplied.
+
+| Need | API |
+| --- | --- |
+| Page with title and readable width | `BrockmannPage(title: ..., subtitle: ..., onBack: ..., actions: [...])`. `maxContentWidth` (default 960) centres content on tablets. |
+| Consistent vertical spacing | `BrockmannStack(spacing: BrockmannSpace.l, children: [...])`, `BrockmannGap.m()` |
+| Titled group | `BrockmannSection(title:, description:, trailing:, children:)` |
+| Equal-width cards/stats | `BrockmannGrid(minItemWidth: 160, children: [...])`. Minimum width grows with text size (up to 2×). |
+| Side-by-side panes | `BrockmannColumns(flex: [3, 2], children: [...])` stacks below `breakpoint` (600 dp). |
+| List/detail | `BrockmannSplitView(list:, detail:, showDetail:, onCloseDetail:)`. Single pane on phones; Android Back returns to the list. |
+| App frame | `BrockmannAdaptiveScaffold(destinations:, selected:, onChanged:, body:)`. Typographic pivot on phones, `BrockmannNavigationList` beside the body from 840 dp. |
+| Wrapping actions | `BrockmannButtonBar(children: [...])` |
+| Readouts | `BrockmannStat(label:, value:)`, `BrockmannPropertyList(entries: {...})` (collapses to stacked pairs when narrow) |
+| Separation / loading | `BrockmannDivider()`, `BrockmannPlaceholder(lines: 3)` (static; it never animates) |
+
+```dart
+BrockmannPage(
+  title: 'Session',
+  subtitle: 'Saved 2 minutes ago',
+  child: BrockmannStack(children: [
+    BrockmannGrid(children: [
+      BrockmannStat(label: 'tempo', value: '124 bpm', large: true),
+      BrockmannStat(label: 'length', value: '4:32', large: true),
+    ]),
+    BrockmannSection(title: 'Output', children: [
+      BrockmannListItem(label: 'USB interface', leading: BrockmannIcon.settings,
+        chevron: true, onPressed: openOutput),
+    ]),
+    BrockmannButtonBar(children: [
+      BrockmannButton.primary(label: 'export', icon: BrockmannIcon.arrowRight,
+        onPressed: export),
+      BrockmannButton(label: 'delete', destructive: true, onPressed: delete),
+    ]),
+  ]),
+)
+```
+
+`BrockmannListItem.trailing` is presentational: the whole row is one control for TalkBack. Put independent controls next to the row, not inside it.

@@ -58,12 +58,13 @@ Controls are controlled widgets: store their values in your app, and update them
 
 | Purpose | Components |
 | --- | --- |
-| Application | `BrockmannApp`, `BrockmannPage`, `BrockmannThemeData` |
+| Application | `BrockmannApp`, `BrockmannPage`, `BrockmannThemeData`, `BrockmannAdaptiveScaffold` |
+| Layout | `BrockmannResponsive`, `BrockmannGrid`, `BrockmannColumns`, `BrockmannSplitView`, `BrockmannContent`, `BrockmannStack`, `BrockmannSection`, `BrockmannPageHeader`, `BrockmannButtonBar`, `BrockmannDivider`, `BrockmannGap`, `BrockmannSpace` |
 | Typography | `BrockmannText`, `BrockmannType` (14 roles) |
 | Input | `BrockmannButton`, `BrockmannSwitch`, `BrockmannSlider`, `BrockmannKnob`, `BrockmannTextField`, `BrockmannSearchField`, `BrockmannRangeSlider`, `BrockmannStepper` |
 | Navigation | `BrockmannPivot`, `BrockmannPicker` (full-page or anchored), `BrockmannNavigationBar` |
 | Colour | `BrockmannColorPicker`, `BrockmannColorField`, `BrockmannColorScheme`, `brockmannPalette()` |
-| Display | `BrockmannTile`, `BrockmannLiveTile`, `BrockmannListItem`, `BrockmannMeter`, `BrockmannProgress` |
+| Display | `BrockmannTile`, `BrockmannLiveTile`, `BrockmannListItem`, `BrockmannMeter`, `BrockmannProgress`, `BrockmannStat`, `BrockmannPropertyList`, `BrockmannPlaceholder` |
 | Overlays | `showBrockmannDialog`, `showBrockmannMenu`, `showBrockmannCommands`, `showBrockmannToast` |
 | Selection | `BrockmannCheckbox`, `BrockmannRadioGroup`, `BrockmannSegmentedControl`, `BrockmannChip` |
 | Composition | `BrockmannAccordion`, `BrockmannBadge`, `BrockmannBanner`, `BrockmannEmptyState` |

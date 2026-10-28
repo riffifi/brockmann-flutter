@@ -293,13 +293,14 @@ class _CatalogueState extends State<Catalogue> {
 
   @override
   Widget build(BuildContext context) {
+    final inset = context.brockmannLayout.inset;
     final header = Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: inset),
             child: Row(
               children: [
                 const Expanded(
@@ -337,15 +338,15 @@ class _CatalogueState extends State<Catalogue> {
         child: page == 3
             ? Padding(
                 key: ValueKey(page),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: content(context),
+                padding: EdgeInsets.symmetric(horizontal: inset),
+                child: BrockmannContent(child: content(context)),
               )
             : SingleChildScrollView(
                 key: PageStorageKey(page),
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                padding: EdgeInsets.fromLTRB(inset, 24, inset, 32),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                child: content(context),
+                child: BrockmannContent(child: content(context)),
               ),
       ),
     );
@@ -603,6 +604,102 @@ class _CatalogueState extends State<Catalogue> {
       note(
         'An 8 dp rhythm. Labels and values occupy separate lines; content grows with the user’s text size.',
       ),
+      BrockmannResponsive(
+        builder: (c, layout) => BrockmannText(
+          'this region: ${layout.windowSize.name} · ${layout.width.round()} dp · '
+          '${layout.columns} columns · ${layout.inset.round()} dp inset',
+          role: BrockmannType.monoValue,
+          color: c.brockmann.secondary,
+        ),
+      ),
+      BrockmannGrid(
+        minItemWidth: 140,
+        children: const [
+          BrockmannStat(label: 'latency', value: '4.8 ms', large: true),
+          BrockmannStat(
+            label: 'sample rate',
+            value: '48 kHz',
+            large: true,
+            emphasis: true,
+          ),
+          BrockmannStat(label: 'buffer', value: '256', large: true),
+          BrockmannStat(
+            label: 'cpu',
+            value: '12 %',
+            large: true,
+            caption: 'peak 31 %',
+          ),
+        ],
+      ),
+      BrockmannColumns(
+        flex: const [3, 2],
+        children: [
+          BrockmannSection(
+            title: 'session',
+            description: 'Columns stack below 600 dp.',
+            trailing: BrockmannOverflowMenu<String>(
+              entries: sessionActions,
+              onSelected: (v) => showBrockmannToast(context, v),
+            ),
+            spacing: 16,
+            children: const [
+              BrockmannPropertyList(
+                entries: {
+                  'name': 'untitled session',
+                  'tempo': '124 bpm',
+                  'length': '4:32',
+                  'tracks': '12',
+                },
+              ),
+            ],
+          ),
+          BrockmannSection(
+            title: 'loading',
+            description: 'Static placeholders; no idle animation.',
+            spacing: 16,
+            children: const [
+              BrockmannPlaceholder(height: 24, width: 120),
+              BrockmannPlaceholder(lines: 3),
+            ],
+          ),
+        ],
+      ),
+      BrockmannListItem(
+        label: 'audio output',
+        secondary: 'USB interface, 2 channels',
+        leading: BrockmannIcon.settings,
+        trailing: const BrockmannBadge(
+          label: 'live',
+          tone: BrockmannTone.accent,
+        ),
+        chevron: true,
+        onPressed: () {},
+      ),
+      BrockmannBanner(
+        title: 'Export failed',
+        message: 'The destination disk is full. Free some space and retry.',
+        tone: BrockmannTone.danger,
+        action: BrockmannButton.text(
+          label: 'retry',
+          icon: BrockmannIcon.arrowsClockwise,
+          onPressed: () {},
+        ),
+      ),
+      BrockmannButtonBar(
+        children: [
+          BrockmannButton.primary(
+            label: 'continue',
+            icon: BrockmannIcon.arrowRight,
+            onPressed: () {},
+          ),
+          BrockmannButton(
+            label: 'delete session',
+            destructive: true,
+            onPressed: () {},
+          ),
+        ],
+      ),
+      const BrockmannDivider(),
       buttons([
         BrockmannTile(
           label: 'one unit',
