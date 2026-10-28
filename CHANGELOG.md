@@ -1,5 +1,8 @@
 ## 0.2.0 (unreleased)
 
+- Preserve page/form state when the adaptive scaffold crosses its navigation breakpoint.
+- Share Antiattendance integration APIs: rich button content and alignment, compact switches/checkboxes, text formatting/submission/adornments, custom dialog forms, rich command entries, descendant semantics, and explicit calendar labels. Primary press feedback remains visible with black accents.
+
 - Add an adaptive layout layer: `BrockmannWindowSize`, `context.brockmannLayout`, `BrockmannResponsive`, `BrockmannGrid`, `BrockmannColumns`, `BrockmannContent`, `BrockmannSplitView`, `BrockmannAdaptiveScaffold` and `BrockmannNavigationList`.
 - Add building blocks: `BrockmannSpace`, `BrockmannGap`, `BrockmannStack`, `BrockmannSection`, `BrockmannPageHeader`, `BrockmannButtonBar`, `BrockmannDivider`, `BrockmannStat`, `BrockmannPropertyList`, `BrockmannPlaceholder`.
 - `BrockmannPage` gains `title`, `subtitle`, `onBack`, `actions` and a readable `maxContentWidth` (960 dp); the 48 dp inset now starts at 600 dp.

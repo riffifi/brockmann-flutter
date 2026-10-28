@@ -154,3 +154,22 @@ BrockmannPage(
 ```
 
 `BrockmannListItem.trailing` is presentational: the whole row is one control for TalkBack. Put independent controls next to the row, not inside it.
+
+## Application integration
+
+Buttons accept `child` and `alignment` when an application needs rich content;
+keep `label` descriptive for accessibility, or leave it empty to retain the
+child's semantics. `BrockmannPressable(excludeSemantics: false)` retains child
+semantics for composite application content.
+
+Switches and checkboxes accept `compact: true` for use beside a separate label.
+Their enclosing application row must supply an accessible label.
+`BrockmannTextField` supports input formatters, capitalization, alignment,
+submission, autofill, obscuring, length limits, prefix/suffix content, and helper
+text. `hint` takes precedence over the compatibility alias `placeholder`, and
+`suffix` over `trailing`.
+
+Use `BrockmannDialog(title:, content:, actions:)` inside the application's dialog
+route for arbitrary forms. `BrockmannMenuEntry` accepts `leading`, `trailing`, and
+`secondary` for rich command bands. Date-picker callers can supply `title`,
+`confirmLabel`, and `cancelLabel` from their app localizations.

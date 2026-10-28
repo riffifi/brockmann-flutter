@@ -64,19 +64,19 @@ class _BrockmannCalendarState extends State<BrockmannCalendar> {
           children: [
             BrockmannIconButton(
               icon: BrockmannIcon.caretLeft,
-              label: 'Previous month',
+              label: locale.previousMonthTooltip,
               onPressed: previous.isBefore(first) ? null : () => move(-1),
             ),
             const Spacer(),
             BrockmannIconButton(
               icon: BrockmannIcon.caretRight,
-              label: 'Next month',
+              label: locale.nextMonthTooltip,
               onPressed: next.isAfter(last) ? null : () => move(1),
             ),
           ],
         ),
         BrockmannPicker(
-          label: 'year',
+          label: locale.selectYearSemanticsLabel,
           options: [for (var y = first.year; y <= last.year; y++) '$y'],
           selected: _month.year - first.year,
           presentation: BrockmannPickerPresentation.anchored,

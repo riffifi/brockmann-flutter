@@ -12,10 +12,11 @@ class BrockmannCheckbox extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.tristate = false,
+    this.compact = false,
   });
   final String label;
   final bool? value;
-  final bool tristate;
+  final bool tristate, compact;
   final ValueChanged<bool?>? onChanged;
   @override
   Widget build(BuildContext context) {
@@ -41,6 +42,7 @@ class BrockmannCheckbox extends StatelessWidget {
           builder: (c, p) => ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
             child: Row(
+              mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
               children: [
                 AnimatedContainer(
                   duration: t.duration(c, 160),
@@ -62,13 +64,14 @@ class BrockmannCheckbox extends StatelessWidget {
                           color: t.onAccent,
                         ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: BrockmannText(
-                    label,
-                    color: onChanged == null ? t.disabled : t.foreground,
+                if (!compact) const SizedBox(width: 16),
+                if (!compact)
+                  Expanded(
+                    child: BrockmannText(
+                      label,
+                      color: onChanged == null ? t.disabled : t.foreground,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

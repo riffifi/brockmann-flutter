@@ -674,7 +674,7 @@ class BrockmannNavigationList extends StatelessWidget {
 /// typographic pivot above the body; from [breakpoint] on they become a
 /// vertical [BrockmannNavigationList] beside it. The body is not rebuilt
 /// with a new identity when the layout changes.
-class BrockmannAdaptiveScaffold extends StatelessWidget {
+class BrockmannAdaptiveScaffold extends StatefulWidget {
   const BrockmannAdaptiveScaffold({
     super.key,
     required this.destinations,
@@ -694,26 +694,34 @@ class BrockmannAdaptiveScaffold extends StatelessWidget {
   final List<Widget> actions;
   final double breakpoint, navigationWidth;
   @override
+  State<BrockmannAdaptiveScaffold> createState() =>
+      _BrockmannAdaptiveScaffoldState();
+}
+
+class _BrockmannAdaptiveScaffoldState extends State<BrockmannAdaptiveScaffold> {
+  final _bodyKey = GlobalKey();
+
+  @override
   Widget build(BuildContext context) {
     final t = context.brockmann;
-    final wide = MediaQuery.sizeOf(context).width >= breakpoint;
-    final titleRow = title == null && actions.isEmpty
+    final wide = MediaQuery.sizeOf(context).width >= widget.breakpoint;
+    final titleRow = widget.title == null && widget.actions.isEmpty
         ? null
         : Row(
             children: [
               Expanded(
-                child: title == null
+                child: widget.title == null
                     ? const SizedBox()
                     : BrockmannText(
-                        title!.toUpperCase(),
+                        widget.title!.toUpperCase(),
                         role: BrockmannType.label,
                         color: t.secondary,
                       ),
               ),
-              ...actions,
+              ...widget.actions,
             ],
           );
-    final keyedBody = KeyedSubtree(key: const ValueKey('body'), child: body);
+    final keyedBody = KeyedSubtree(key: _bodyKey, child: widget.body);
     return Scaffold(
       backgroundColor: t.background,
       resizeToAvoidBottomInset: true,
@@ -723,11 +731,11 @@ class BrockmannAdaptiveScaffold extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
-                    width: navigationWidth,
+                    width: widget.navigationWidth,
                     child: BrockmannNavigationList(
-                      options: destinations,
-                      selected: selected,
-                      onChanged: onChanged,
+                      options: widget.destinations,
+                      selected: widget.selected,
+                      onChanged: widget.onChanged,
                       header: titleRow,
                     ),
                   ),
@@ -745,9 +753,9 @@ class BrockmannAdaptiveScaffold extends StatelessWidget {
                     ),
                   const SizedBox(height: 12),
                   BrockmannPivot(
-                    options: destinations,
-                    selected: selected,
-                    onChanged: onChanged,
+                    options: widget.destinations,
+                    selected: widget.selected,
+                    onChanged: widget.onChanged,
                   ),
                   Expanded(child: keyedBody),
                 ],

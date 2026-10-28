@@ -25,6 +25,7 @@ class BrockmannPressable extends StatefulWidget {
     this.tooltip,
     this.tiltStrength = 0,
     this.onKey,
+    this.excludeSemantics = true,
   });
   final String label;
   final Widget Function(BuildContext, bool) builder;
@@ -32,6 +33,7 @@ class BrockmannPressable extends StatefulWidget {
   final BrockmannSound? sound;
   final bool? selected, toggled;
   final bool button;
+  final bool excludeSemantics;
   final String? tooltip;
   final double tiltStrength;
   final ValueChanged<LogicalKeyboardKey>? onKey;
@@ -60,7 +62,7 @@ class _BrockmannPressableState extends State<BrockmannPressable> {
       selected: widget.selected,
       toggled: widget.toggled,
       onTap: widget.onPressed == null ? null : _invoke,
-      excludeSemantics: true,
+      excludeSemantics: widget.excludeSemantics,
       child: FocusableActionDetector(
         enabled: widget.onPressed != null,
         onShowFocusHighlight: (v) => setState(() => focused = v),

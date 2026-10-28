@@ -20,6 +20,8 @@ class BrockmannButton extends StatelessWidget {
   const BrockmannButton({
     super.key,
     required this.label,
+    this.child,
+    this.alignment = Alignment.centerLeft,
     this.onPressed,
     this.style = BrockmannButtonStyle.secondary,
     this.sound,
@@ -30,6 +32,8 @@ class BrockmannButton extends StatelessWidget {
   const BrockmannButton.primary({
     super.key,
     required this.label,
+    this.child,
+    this.alignment = Alignment.centerLeft,
     this.onPressed,
     this.sound,
     this.icon,
@@ -39,6 +43,8 @@ class BrockmannButton extends StatelessWidget {
   const BrockmannButton.text({
     super.key,
     required this.label,
+    this.child,
+    this.alignment = Alignment.centerLeft,
     this.onPressed,
     this.sound,
     this.icon,
@@ -46,6 +52,8 @@ class BrockmannButton extends StatelessWidget {
   }) : style = BrockmannButtonStyle.text,
        expand = false;
   final String label;
+  final Widget? child;
+  final AlignmentGeometry alignment;
   final VoidCallback? onPressed;
   final BrockmannButtonStyle style;
   final BrockmannSound? sound;
@@ -54,6 +62,7 @@ class BrockmannButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BrockmannPressable(
     label: label,
+    excludeSemantics: child == null || label.isNotEmpty,
     tiltStrength: 1,
     onPressed: onPressed,
     sound:
@@ -89,7 +98,7 @@ class BrockmannButton extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: style == BrockmannButtonStyle.primary
-              ? (enabled ? Color.lerp(fill, Colors.black, p ? .18 : 0) : t.line)
+              ? (enabled ? Color.lerp(fill, onFill, p ? .12 : 0) : t.line)
               : p
               ? t.surface
               : null,
@@ -105,10 +114,22 @@ class BrockmannButton extends StatelessWidget {
               : null,
         ),
         child: Align(
-          alignment: Alignment.centerLeft,
+          alignment: alignment,
           widthFactor: expand ? null : 1,
           heightFactor: 1,
-          child: icon == null
+          child: child != null
+              ? IconTheme(
+                  data: IconThemeData(color: ink, size: 20),
+                  child: DefaultTextStyle(
+                    style:
+                        (style == BrockmannButtonStyle.text
+                                ? BrockmannType.body
+                                : BrockmannType.value)
+                            .style(color: ink),
+                    child: child!,
+                  ),
+                )
+              : icon == null
               ? text
               : Row(
                   mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -131,9 +152,10 @@ class BrockmannSwitch extends StatefulWidget {
     required this.value,
     this.onChanged,
     this.sound = true,
+    this.compact = false,
   });
   final String label;
-  final bool value, sound;
+  final bool value, sound, compact;
   final ValueChanged<bool>? onChanged;
   @override
   State<BrockmannSwitch> createState() => _BrockmannSwitchState();
@@ -174,49 +196,58 @@ class _BrockmannSwitchState extends State<BrockmannSwitch> {
         builder: (c, raw) {
           final progress = raw.clamp(0.0, 1.0);
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: widget.compact ? 0 : 12),
             child: Row(
+              mainAxisSize: widget.compact
+                  ? MainAxisSize.min
+                  : MainAxisSize.max,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      BrockmannText(
-                        widget.label,
-                        color: widget.onChanged == null
-                            ? t.disabled
-                            : t.secondary,
-                      ),
-                      AnimatedSwitcher(
-                        duration: t.duration(c, 170),
-                        reverseDuration: t.duration(c, 90),
-                        layoutBuilder: (current, previous) => Stack(
-                          alignment: Alignment.centerLeft,
-                          children: [...previous, ?current],
-                        ),
-                        transitionBuilder: (child, animation) => FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween(
-                              begin: Offset(0, t.motionReduced(c) ? 0 : -.25),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        ),
-                        child: BrockmannText(
-                          progress >= .5 ? 'On' : 'Off',
-                          key: ValueKey(progress >= .5),
-                          role: BrockmannType.value,
+                if (!widget.compact) ...[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        BrockmannText(
+                          widget.label,
                           color: widget.onChanged == null
                               ? t.disabled
-                              : t.foreground,
+                              : t.secondary,
                         ),
-                      ),
-                    ],
+                        AnimatedSwitcher(
+                          duration: t.duration(c, 170),
+                          reverseDuration: t.duration(c, 90),
+                          layoutBuilder: (current, previous) => Stack(
+                            alignment: Alignment.centerLeft,
+                            children: [...previous, ?current],
+                          ),
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: Offset(
+                                      0,
+                                      t.motionReduced(c) ? 0 : -.25,
+                                    ),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              ),
+                          child: BrockmannText(
+                            progress >= .5 ? 'On' : 'Off',
+                            key: ValueKey(progress >= .5),
+                            role: BrockmannType.value,
+                            color: widget.onChanged == null
+                                ? t.disabled
+                                : t.foreground,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 24),
+                  const SizedBox(width: 24),
+                ],
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onHorizontalDragStart: widget.onChanged == null
@@ -851,6 +882,13 @@ class BrockmannTextField extends StatelessWidget {
     this.multiline = false,
     this.keyboardType,
     this.obscureText = false,
+    this.inputFormatters,
+    this.textCapitalization = TextCapitalization.none,
+    this.textAlign = TextAlign.start,
+    this.placeholder,
+    this.leading,
+    this.trailing,
+    this.suffixText,
     this.hint,
     this.helper,
     this.focusNode,
@@ -873,6 +911,11 @@ class BrockmannTextField extends StatelessWidget {
   final String? helper;
   final ValueChanged<String>? onChanged, onSubmitted;
   final bool enabled, multiline, obscureText, autofocus;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextCapitalization textCapitalization;
+  final TextAlign textAlign;
+  final String? placeholder, suffixText;
+  final Widget? leading, trailing;
   final TextInputType? keyboardType;
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
@@ -890,14 +933,18 @@ class BrockmannTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        BrockmannText(
-          label,
-          role: BrockmannType.label,
-          color: enabled ? t.secondary : t.disabled,
-        ),
-        const SizedBox(height: 8),
+        if (label.isNotEmpty)
+          BrockmannText(
+            label,
+            role: BrockmannType.label,
+            color: enabled ? t.secondary : t.disabled,
+          ),
+        if (label.isNotEmpty) const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          inputFormatters: inputFormatters,
+          textCapitalization: textCapitalization,
+          textAlign: textAlign,
           initialValue: initialValue,
           onChanged: onChanged,
           enabled: enabled,
@@ -920,17 +967,19 @@ class BrockmannTextField extends StatelessWidget {
                   .style(color: t.foreground),
           cursorColor: t.accent,
           decoration: InputDecoration(
+            prefixIcon: leading,
+            suffixText: suffixText,
             isDense: true,
             contentPadding: const EdgeInsets.all(12),
             errorText: error,
             errorMaxLines: 3,
-            hintText: hint,
+            hintText: hint ?? placeholder,
             hintStyle: BrockmannType.body.style(color: t.disabled),
             helperText: helper,
             helperMaxLines: 3,
             helperStyle: BrockmannType.caption.style(color: t.secondary),
             counterStyle: BrockmannType.caption.style(color: t.secondary),
-            suffixIcon: suffix,
+            suffixIcon: suffix ?? trailing,
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.zero,
               borderSide: BorderSide(color: t.danger),

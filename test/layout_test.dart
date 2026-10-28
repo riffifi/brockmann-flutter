@@ -213,6 +213,32 @@ void main() {
     expect(find.text('body 1'), findsOneWidget);
   });
 
+  testWidgets('adaptive scaffold retains editing across breakpoints', (
+    tester,
+  ) async {
+    await sized(tester, const Size(400, 800));
+    await tester.pumpWidget(
+      BrockmannApp(
+        home: BrockmannAdaptiveScaffold(
+          destinations: const ['inbox', 'archive'],
+          selected: 0,
+          onChanged: (_) {},
+          body: const BrockmannTextField(label: 'Draft'),
+        ),
+      ),
+    );
+    await tester.enterText(find.byType(TextFormField), 'unfinished draft');
+    final state = tester.state(find.byType(TextFormField));
+    tester.view.physicalSize = const Size(1200, 800);
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(TextFormField)), same(state));
+    expect(find.text('unfinished draft'), findsOneWidget);
+    tester.view.physicalSize = const Size(400, 800);
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(TextFormField)), same(state));
+    expect(find.text('unfinished draft'), findsOneWidget);
+  });
+
   testWidgets('split view shows detail and Back returns', (tester) async {
     var detail = true;
     await sized(tester, const Size(400, 800));

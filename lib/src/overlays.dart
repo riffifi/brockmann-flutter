@@ -59,6 +59,47 @@ Future<String?> showBrockmannDialog(
   return result;
 }
 
+/// Arbitrary form content in Brockmann's flat, keyboard-safe dialog band.
+class BrockmannDialog extends StatelessWidget {
+  const BrockmannDialog({
+    super.key,
+    this.title,
+    this.content,
+    this.actions = const [],
+    this.scrollable = true,
+  });
+  final Widget? title, content;
+  final List<Widget> actions;
+  final bool scrollable;
+  @override
+  Widget build(BuildContext context) => _FlatDialog(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (title != null)
+          DefaultTextStyle(
+            style: BrockmannType.heading.style(
+              color: context.brockmann.foreground,
+            ),
+            child: title!,
+          ),
+        if (title != null && content != null) const SizedBox(height: 16),
+        ?content,
+        if (actions.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 16,
+            runSpacing: 12,
+            children: actions,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 class _FlatDialog extends StatelessWidget {
   const _FlatDialog({required this.child});
   final Widget child;
@@ -224,11 +265,16 @@ class BrockmannMenuEntry<T> {
     this.icon,
     this.enabled = true,
     this.destructive = false,
+    this.leading,
+    this.trailing,
+    this.secondary,
   });
   final T value;
   final String label;
   final BrockmannIcon? icon;
   final bool enabled, destructive;
+  final Widget? leading, trailing;
+  final String? secondary;
 }
 
 Future<T?> showBrockmannContextMenu<T>(
@@ -334,6 +380,10 @@ Future<T?> showBrockmannActionSheet<T>(
                             : Colors.transparent,
                         child: Row(
                           children: [
+                            if (entry.leading != null) ...[
+                              entry.leading!,
+                              const SizedBox(width: 16),
+                            ],
                             if (entry.icon != null && showIcons) ...[
                               BrockmannGlyph(
                                 entry.icon!,
@@ -346,17 +396,34 @@ Future<T?> showBrockmannActionSheet<T>(
                               const SizedBox(width: 16),
                             ],
                             Expanded(
-                              child: BrockmannText(
-                                entry.label,
-                                role: BrockmannType.heading,
-                                weight: 300,
-                                color: !entry.enabled
-                                    ? t.disabled
-                                    : entry.destructive
-                                    ? t.danger
-                                    : t.foreground,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  BrockmannText(
+                                    entry.label,
+                                    role: BrockmannType.heading,
+                                    weight: 300,
+                                    color: !entry.enabled
+                                        ? t.disabled
+                                        : entry.destructive
+                                        ? t.danger
+                                        : t.foreground,
+                                  ),
+                                  if (entry.secondary != null) ...[
+                                    const SizedBox(height: 4),
+                                    BrockmannText(
+                                      entry.secondary!,
+                                      role: BrockmannType.caption,
+                                      color: t.secondary,
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
+                            if (entry.trailing != null) ...[
+                              const SizedBox(width: 12),
+                              entry.trailing!,
+                            ],
                           ],
                         ),
                       ),
@@ -376,6 +443,9 @@ Future<DateTime?> showBrockmannDatePicker(
   required DateTime initialDate,
   required DateTime firstDate,
   required DateTime lastDate,
+  String? title,
+  String? confirmLabel,
+  String? cancelLabel,
 }) {
   final first = DateUtils.dateOnly(firstDate),
       last = DateUtils.dateOnly(lastDate);
@@ -385,12 +455,12 @@ Future<DateTime?> showBrockmannDatePicker(
   );
   return _showTypedPicker<DateTime>(
     context,
-    'choose date',
+    title ?? 'choose date',
     (c, set) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        BrockmannText('choose date', role: BrockmannType.heading),
+        BrockmannText(title ?? 'choose date', role: BrockmannType.heading),
         const SizedBox(height: 16),
         BrockmannCalendar(
           value: draft,
@@ -404,12 +474,12 @@ Future<DateTime?> showBrockmannDatePicker(
           runSpacing: 8,
           children: [
             BrockmannButton(
-              label: 'use date',
+              label: confirmLabel ?? 'use date',
               style: BrockmannButtonStyle.secondary,
               onPressed: () => Navigator.pop(c, draft),
             ),
             BrockmannButton(
-              label: 'cancel',
+              label: cancelLabel ?? 'cancel',
               style: BrockmannButtonStyle.text,
               onPressed: () => Navigator.pop(c),
             ),
